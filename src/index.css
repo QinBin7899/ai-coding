@@ -1,0 +1,218 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 36 33% 98%;
+    --foreground: 20 18% 12%;
+    --card: 36 25% 99%;
+    --card-foreground: 20 18% 12%;
+    --popover: 36 25% 99%;
+    --popover-foreground: 20 18% 12%;
+
+    --primary: 30 85% 48%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 32 30% 93%;
+    --secondary-foreground: 20 18% 12%;
+
+    --muted: 34 18% 93%;
+    --muted-foreground: 24 10% 42%;
+    --accent: 32 42% 91%;
+    --accent-foreground: 20 18% 12%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 30 20% 86%;
+    --input: 30 20% 86%;
+    --ring: 30 85% 48%;
+
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 240 3% 6%;
+    --foreground: 0 0% 98%;
+    --card: 240 3% 10%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 3% 10%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 30 80% 52%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 240 3% 14%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 240 3% 14%;
+    --muted-foreground: 240 3% 66%;
+    --accent: 240 3% 14%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 240 3% 18%;
+    --input: 240 3% 18%;
+    --ring: 30 80% 52%;
+  }
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.dark .glass {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.dark .glass-card {
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0.01) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.glass-card-active {
+  background: rgba(255, 146, 66, 0.08);
+  border: 1px solid rgba(255, 146, 66, 0.4);
+}
+
+.dark .glass-card-active {
+  background: rgba(255, 146, 66, 0.12);
+  border: 1px solid rgba(255, 146, 66, 0.3);
+}
+
+.glass-dock {
+  background: rgba(250, 250, 250, 0.72);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.18);
+}
+
+.dark .glass-dock {
+  background: rgba(247, 245, 241, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.48);
+  box-shadow:
+    0 12px 36px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.58);
+}
+
+.glass-header {
+  background: hsl(var(--background));
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: none;
+  border-top: 2px solid hsl(var(--border));
+}
+
+.dark .glass-header {
+  background: hsl(var(--background));
+  border: none;
+  border-top: 2px solid hsl(var(--border));
+}
+
+[data-tauri-drag-region] {
+  -webkit-app-region: drag;
+}
+
+[data-tauri-no-drag],
+[data-tauri-drag-region] .no-drag {
+  -webkit-app-region: no-drag;
+}
+
+* {
+  box-sizing: border-box;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+html {
+  @apply font-sans antialiased;
+  line-height: 1.5;
+  color-scheme: light;
+  overscroll-behavior: none;
+  font-family:
+    "SF Pro Display",
+    "SF Pro Text",
+    "Helvetica Neue",
+    -apple-system,
+    BlinkMacSystemFont,
+    "PingFang SC",
+    "Hiragino Sans GB",
+    sans-serif;
+}
+
+body {
+  @apply m-0 p-0 text-sm;
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+::-webkit-scrollbar {
+  display: none;
+}
+
+*:focus-visible {
+  @apply outline-2 outline-orange-500 outline-offset-2;
+}
+
+@layer utilities {
+  .scroll-overlay {
+    scrollbar-gutter: stable both-edges;
+    padding-right: 0.5rem;
+    margin-right: -0.5rem;
+    overflow-x: hidden;
+  }
+
+  .border-default {
+    border-width: 1px;
+    border-color: hsl(var(--border));
+  }
+
+  .border-active {
+    border-width: 2px;
+  }
+
+  .border-border-default {
+    border-color: hsl(var(--border));
+  }
+
+  .border-border-active {
+    border-color: hsl(var(--primary));
+  }
+
+  .border-border-hover {
+    border-color: hsl(var(--primary) / 0.4);
+  }
+
+  .border-border-dragging {
+    border-color: hsl(var(--primary) / 0.6);
+  }
+}
+
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}
