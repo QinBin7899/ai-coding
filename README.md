@@ -5,105 +5,108 @@
 </p>
 
 <p align="center">
-  <strong>一个为 AI 编程工具而生的模型供应商切换中枢。</strong><br />
-  统一管理 Claude Code、Claude Desktop、Codex、Gemini CLI、OpenCode、OpenClaw、Hermes、bincode，让国产模型和海外模型都能顺手切换。
+  <strong>A desktop control center for AI coding tools, model providers, routing, memory, sessions, MCP, Skills, and prompts.</strong><br />
+  Switch freely between Chinese domestic model providers and overseas model providers across Claude Code, Claude Desktop, Codex, Gemini CLI, OpenCode, OpenClaw, Hermes, and bincode.
 </p>
 
-AI Coding 不是普通聊天壳，而是给 AI 编程用户准备的桌面控制台：把供应商、模型、API Key、代理路由、MCP、Skills、提示词、会话记录、记忆同步和用量统计放到一个地方管理。它适合经常在国产模型和国外模型之间切换，也适合同时使用多个 AI 编程工具的开发者。
+AI Coding is not another chat wrapper. It is a practical desktop toolkit for developers who use multiple AI coding CLIs and want one clean place to manage providers, API keys, model routes, local proxy settings, MCP servers, Skills, prompts, session history, shared memory, and usage analytics.
 
-## 界面预览
+If you often switch between DeepSeek, Kimi, Zhipu GLM, Qwen/Bailian, SiliconFlow, ModelScope, Claude, Gemini, OpenAI-compatible APIs, AWS Bedrock, or custom gateways, AI Coding is designed to make that workflow faster and less fragile.
 
-> 以下截图均来自当前 AI Coding 版本，不使用第三方示例图。
+## Screenshots
 
-| 跨工具记忆同步 | 添加供应商分类 |
+> All screenshots below are from the current AI Coding app.
+
+| Cross-Tool Memory Sync | Categorized Provider Picker |
 | --- | --- |
-| ![跨工具记忆同步](assets/screenshots/ai-coding-memory-sync.png) | ![添加供应商分类](assets/screenshots/ai-coding-add-provider.png) |
+| ![Cross-tool memory sync](assets/screenshots/ai-coding-memory-sync.png) | ![Categorized provider picker](assets/screenshots/ai-coding-add-provider.png) |
 
-| macOS Dock 风格导航 | 会话导出 Markdown |
+| macOS-Style Dynamic Dock | Export Sessions To Markdown |
 | --- | --- |
-| ![macOS Dock 风格导航](assets/screenshots/ai-coding-dock.png) | ![会话导出 Markdown](assets/screenshots/ai-coding-session-export.png) |
+| ![macOS-style dynamic dock](assets/screenshots/ai-coding-dock.png) | ![Export sessions to Markdown](assets/screenshots/ai-coding-session-export.png) |
 
-![设置页面](assets/screenshots/ai-coding-settings.png)
+![Settings page](assets/screenshots/ai-coding-settings.png)
 
-## 核心亮点
+## Highlights
 
-- **国产模型 / 海外模型自由切换**：添加供应商时按“国模 / 自定义配置 / 美模（海外模型）”分区，内置 DeepSeek、Kimi、智谱 GLM、千帆、百炼、SiliconFlow、ModelScope、Claude、Gemini、OpenAI 兼容服务、AWS Bedrock 等常见选择。
-- **同时管理 8 个 AI 编程 App**：支持 Claude Code、Claude Desktop、Codex、Gemini CLI、OpenCode、OpenClaw、Hermes 和 bincode；其中 bincode 按 OpenCode 兼容方式接入，可独立显示和切换。
-- **跨工具记忆同步**：一键把 Claude Code 的 `CLAUDE.md` 记忆同步到 Codex、Gemini、Hermes、OpenCode、OpenClaw 等工具，不用每个工具手动复制一遍。
-- **会话管理与 Markdown 导出**：集中查看本地 AI 编程会话，支持搜索、恢复会话命令、删除会话，并可把当前会话一键导出为 `.md` 文件，方便归档、复盘和发给别人。
-- **Apple 风格深色界面**：默认深色模式，暖橙主色，底部 macOS Dock 风格导航，图标支持悬停动态放大和名称提示，整体更接近桌面 App 的使用体验。
-- **统一 MCP 管理**：管理 MCP Server，并同步到 Claude、Codex、Gemini、OpenCode、Hermes 等工具，减少多份配置重复维护。
-- **统一 Skills 管理**：支持 Skills 导入、安装、同步、备份和发现，可使用统一目录 `~/.agents/skills` 管理技能脚本。
-- **提示词管理**：集中维护不同工具的提示词配置，支持导入已有提示词文件并同步到目标应用。
-- **代理与路由能力**：内置本地代理、路由切换、健康检查、自动故障转移、熔断和模型映射能力，适合把不同模型供应商接入同一套 AI 编程工作流。
-- **用量统计与成本分析**：解析本地会话和代理请求日志，按模型、供应商、时间趋势统计 token、请求量和费用，帮助你知道钱花到哪里了。
-- **配置备份与迁移**：支持导入/导出配置、WebDAV/S3 同步、全局代理、语言与主题设置，方便多设备迁移或团队共享基础配置。
+- **Chinese and overseas model switching**: providers are organized into Domestic Models, Custom Configuration, and Overseas Models, so users can quickly choose the right route for each AI coding tool.
+- **8 supported AI coding apps**: Claude Code, Claude Desktop, Codex, Gemini CLI, OpenCode, OpenClaw, Hermes, and bincode. bincode is integrated as an OpenCode-compatible app with its own branding and switch entry.
+- **Cross-tool memory synchronization**: push Claude Code memory from `~/.claude/CLAUDE.md` to Codex, Gemini, Hermes, OpenCode, and OpenClaw with one click.
+- **Session management and Markdown export**: browse local AI coding sessions, search history, copy resume commands, delete sessions, and export the current session as a `.md` file for archiving or sharing.
+- **Apple-inspired desktop UI**: dark mode by default, warm Claude-style orange accents, large rounded corners, glass effects, and a macOS Dock-style bottom navigation with hover magnification and app labels.
+- **Unified MCP management**: add, edit, validate, import, and sync MCP servers across multiple coding apps instead of maintaining separate config files manually.
+- **Unified Skills management**: install, import, export, update, discover, and sync Skills. AI Coding can use the unified `~/.agents/skills` layout for cleaner cross-tool skill sharing.
+- **Prompt management**: centralize prompts for different tools, import existing prompt files, edit them in one place, and sync them back to target apps.
+- **Local proxy and routing**: configure local routing, model mapping, provider health checks, automatic failover, circuit breaker behavior, and request transformation for mixed provider workflows.
+- **Usage analytics and cost insight**: parse local sessions and proxy request logs to track requests, token usage, model/provider distribution, trends, and estimated cost.
+- **Backup and migration**: import/export app configuration, sync through WebDAV/S3, configure global proxy settings, and migrate between machines more easily.
 
-## 支持的应用
+## Supported Apps
 
-| 应用 | 说明 |
+| App | What AI Coding Manages |
 | --- | --- |
-| Claude Code | Claude CLI 编程工具 |
-| Claude Desktop | Claude 桌面端配置管理 |
-| Codex | Codex CLI / Codex 相关配置 |
-| Gemini CLI | Gemini 命令行工具 |
-| OpenCode | OpenCode 协议与配置 |
-| OpenClaw | OpenClaw 配置、工具与默认 Agents |
-| Hermes | Hermes Agent 记忆与 Skills |
-| bincode | 基于 OpenCode 兼容协议接入的独立应用入口 |
+| Claude Code | CLI providers, memory, prompts, MCP, sessions, usage |
+| Claude Desktop | Desktop provider routing and configuration |
+| Codex | Providers, prompts, MCP, memory target, sessions, usage |
+| Gemini CLI | Providers, prompts, MCP, memory target, sessions, usage |
+| OpenCode | OpenCode-compatible providers, MCP, Skills, memory target |
+| OpenClaw | Providers, tools, default agents, memory target |
+| Hermes | Hermes memory, Skills, MCP, and provider-related config |
+| bincode | OpenCode-compatible app entry and model switching |
 
-## 适合谁用
+## Why It Exists
 
-- 你经常在国产模型和国外模型之间切换，不想每个 CLI 都重复配置。
-- 你同时使用 Claude Code、Codex、Gemini、OpenCode 等多个 AI 编程工具。
-- 你想把 MCP、Skills、提示词和记忆沉淀成一套可复用的个人工作台。
-- 你想把重要 AI 会话导出成 Markdown，方便沉淀成文档或发给朋友。
-- 你希望本地代理、模型路由、失败切换和用量统计有一个统一入口。
+AI coding tools are powerful, but their configuration is scattered: every CLI has its own provider file, memory file, MCP format, prompt location, and session storage. AI Coding brings these moving parts into one desktop app so switching models, sharing memory, managing Skills, and exporting sessions becomes a normal workflow instead of a collection of manual edits.
 
-## 开源版说明
+## Open-Source Build
 
-这个仓库整理的是适合公开发布、二次开发和自行构建的开源版本。
+This repository is prepared as an open-source build for self-hosting, learning, and secondary development.
 
-- 当前开源版已经移除激活码入口和前后端激活校验，不需要输入激活码即可使用。
-- 商业或私有版本如果需要授权体系，可以在自己的分支中重新接入。
-- 为了兼容历史用户配置，部分底层目录仍会保留旧路径命名，这是迁移兼容设计，不影响产品名称。
-- 如需使用某些 OAuth 能力，请通过环境变量配置自己的 Client ID / Secret，不要把密钥提交到仓库。
+- The activation-code gate has been removed from this open-source version.
+- You do not need an activation code to run this repository build.
+- Commercial or private builds can reintroduce licensing separately if needed.
+- Some internal storage paths may keep historical names for compatibility with existing user data.
+- OAuth-related features require your own Client ID / Client Secret through environment variables. Do not commit secrets to the repository.
 
-## 本地开发
+## Download
 
-### 环境要求
+Prebuilt installers should be published through GitHub Releases. For macOS users, upload the generated `.dmg` file as a release asset so users can download and install it directly.
 
-- Node.js 20+
-- pnpm
-- Rust
-- Tauri 开发环境
-
-### 启动开发版
-
-```bash
-pnpm install
-pnpm tauri dev
-```
-
-### 打包桌面应用
-
-```bash
-pnpm tauri build
-```
-
-macOS 构建产物通常位于：
+The macOS build output is usually located at:
 
 ```text
 src-tauri/target/release/bundle/macos/AI Coding.app
 src-tauri/target/release/bundle/dmg/
 ```
 
-## 项目结构
+## Development
+
+### Requirements
+
+- Node.js 20+
+- pnpm
+- Rust
+- Tauri development environment
+
+### Run In Development
+
+```bash
+pnpm install
+pnpm tauri dev
+```
+
+### Build Desktop App
+
+```bash
+pnpm tauri build
+```
+
+## Project Structure
 
 ```text
-src/          React + TypeScript 前端
-src-tauri/    Rust + Tauri 后端
-assets/       品牌资源与产品截图
+src/          React + TypeScript frontend
+src-tauri/    Rust + Tauri backend
+assets/       Branding assets and product screenshots
 ```
 
 ## License
