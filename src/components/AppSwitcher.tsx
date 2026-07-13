@@ -36,7 +36,7 @@ const ALL_APPS: DockAppId[] = [
   "openclaw",
   "hermes",
 ];
-const STORAGE_KEY = "cc-switch-last-app";
+const STORAGE_KEY = "ai-coding-last-app";
 
 export function AppSwitcher({
   activeApp,

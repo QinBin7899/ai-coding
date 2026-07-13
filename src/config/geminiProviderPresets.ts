@@ -22,8 +22,6 @@ export interface GeminiProviderPreset {
   model?: string;
   description?: string;
   category?: ProviderCategory;
-  isPartner?: boolean;
-  partnerPromotionKey?: string;
   endpointCandidates?: string[];
   theme?: GeminiPresetTheme;
   // 图标配置
@@ -41,7 +39,6 @@ export const geminiProviderPresets: GeminiProviderPreset[] = [
     },
     description: "Google 官方 Gemini API (OAuth)",
     category: "official",
-    partnerPromotionKey: "google-official",
     theme: {
       icon: "gemini",
       backgroundColor: "#4285F4",
@@ -65,14 +62,12 @@ export const geminiProviderPresets: GeminiProviderPreset[] = [
     model: "google/gemini-3.5-flash",
     description: "Shengsuanyun",
     category: "aggregator",
-    isPartner: true,
-    partnerPromotionKey: "shengsuanyun",
     icon: "shengsuanyun",
   },
   {
     name: "Unity2.ai",
     websiteUrl: "https://unity2.ai",
-    apiKeyUrl: "https://unity2.ai/register?source=ccs",
+    apiKeyUrl: "https://unity2.ai/register",
     settingsConfig: {
       env: {
         GOOGLE_GEMINI_BASE_URL: "https://api.unity2.ai",
@@ -83,14 +78,12 @@ export const geminiProviderPresets: GeminiProviderPreset[] = [
     model: "gemini-3.1-pro",
     description: "Unity2.ai",
     category: "aggregator",
-    isPartner: true,
-    partnerPromotionKey: "unity2",
     icon: "unity2",
   },
   {
     name: "PackyCode",
     websiteUrl: "https://www.packyapi.com",
-    apiKeyUrl: "https://www.packyapi.com/register?aff=cc-switch",
+    apiKeyUrl: "https://www.packyapi.com/register",
     settingsConfig: {
       env: {
         GOOGLE_GEMINI_BASE_URL: "https://www.packyapi.com",
@@ -101,8 +94,6 @@ export const geminiProviderPresets: GeminiProviderPreset[] = [
     model: "gemini-3.5-flash",
     description: "PackyCode",
     category: "third_party",
-    isPartner: true,
-    partnerPromotionKey: "packycode",
     endpointCandidates: [
       "https://api-slb.packyapi.com",
       "https://www.packyapi.com",
@@ -112,7 +103,7 @@ export const geminiProviderPresets: GeminiProviderPreset[] = [
   {
     name: "APIKEY.FUN",
     websiteUrl: "https://apikey.fun",
-    apiKeyUrl: "https://apikey.fun/register?aff=CCSwitch",
+    apiKeyUrl: "https://apikey.fun/register",
     settingsConfig: {
       env: {
         GOOGLE_GEMINI_BASE_URL: "https://api.apikey.fun",
@@ -124,15 +115,13 @@ export const geminiProviderPresets: GeminiProviderPreset[] = [
     model: "gemini-3.5-flash",
     description: "APIKEY.FUN",
     category: "third_party",
-    isPartner: true,
-    partnerPromotionKey: "apikeyfun",
     endpointCandidates: ["https://api.apikey.fun", "https://slb.apikey.fun"],
     icon: "apikeyfun",
   },
   {
     name: "APINebula",
     websiteUrl: "https://apinebula.com",
-    apiKeyUrl: "https://apinebula.com/02rw5X",
+    apiKeyUrl: "https://apinebula.com",
     settingsConfig: {
       env: {
         GOOGLE_GEMINI_BASE_URL: "https://apinebula.com",
@@ -144,8 +133,6 @@ export const geminiProviderPresets: GeminiProviderPreset[] = [
     model: "gemini-3.5-flash",
     description: "APINebula",
     category: "third_party",
-    isPartner: true,
-    partnerPromotionKey: "apinebula",
     endpointCandidates: ["https://apinebula.com"],
     icon: "apinebula",
   },
@@ -164,15 +151,13 @@ export const geminiProviderPresets: GeminiProviderPreset[] = [
     model: "gemini-3.1-flash-lite",
     description: "SudoCode",
     category: "third_party",
-    isPartner: true,
-    partnerPromotionKey: "sudocode",
     endpointCandidates: ["https://sudocode.us", "https://sudocode.run"],
     icon: "sudocode",
   },
   {
     name: "Cubence",
     websiteUrl: "https://cubence.com",
-    apiKeyUrl: "https://cubence.com/signup?code=CCSWITCH&source=ccs",
+    apiKeyUrl: "https://cubence.com/signup?code=AI-CODING&source=ccs",
     settingsConfig: {
       env: {
         GOOGLE_GEMINI_BASE_URL: "https://api.cubence.com",
@@ -183,8 +168,6 @@ export const geminiProviderPresets: GeminiProviderPreset[] = [
     model: "gemini-3.5-flash",
     description: "Cubence",
     category: "third_party",
-    isPartner: true,
-    partnerPromotionKey: "cubence",
     endpointCandidates: [
       "https://api.cubence.com/v1",
       "https://api-cf.cubence.com/v1",
@@ -197,7 +180,7 @@ export const geminiProviderPresets: GeminiProviderPreset[] = [
   {
     name: "AIGoCode",
     websiteUrl: "https://aigocode.com",
-    apiKeyUrl: "https://aigocode.com/invite/CC-SWITCH",
+    apiKeyUrl: "https://aigocode.com",
     settingsConfig: {
       env: {
         GOOGLE_GEMINI_BASE_URL: "https://api.aigocode.com",
@@ -208,8 +191,6 @@ export const geminiProviderPresets: GeminiProviderPreset[] = [
     model: "gemini-3.5-flash",
     description: "AIGoCode",
     category: "third_party",
-    isPartner: true,
-    partnerPromotionKey: "aigocode",
     endpointCandidates: ["https://api.aigocode.com"],
     icon: "aigocode",
     iconColor: "#5B7FFF",
@@ -217,7 +198,7 @@ export const geminiProviderPresets: GeminiProviderPreset[] = [
   {
     name: "AICodeMirror",
     websiteUrl: "https://www.aicodemirror.com",
-    apiKeyUrl: "https://www.aicodemirror.com/register?invitecode=9915W3",
+    apiKeyUrl: "https://www.aicodemirror.com/register",
     settingsConfig: {
       env: {
         GOOGLE_GEMINI_BASE_URL: "https://api.aicodemirror.com/api/gemini",
@@ -228,8 +209,6 @@ export const geminiProviderPresets: GeminiProviderPreset[] = [
     model: "gemini-3.5-flash",
     description: "AICodeMirror",
     category: "third_party",
-    isPartner: true,
-    partnerPromotionKey: "aicodemirror",
     endpointCandidates: [
       "https://api.aicodemirror.com/api/gemini",
       "https://api.claudecode.net.cn/api/gemini",
@@ -240,7 +219,7 @@ export const geminiProviderPresets: GeminiProviderPreset[] = [
   {
     name: "CrazyRouter",
     websiteUrl: "https://www.crazyrouter.com",
-    apiKeyUrl: "https://www.crazyrouter.com/register?aff=OZcm&ref=cc-switch",
+    apiKeyUrl: "https://www.crazyrouter.com/register",
     settingsConfig: {
       env: {
         GOOGLE_GEMINI_BASE_URL: "https://cn.crazyrouter.com",
@@ -251,8 +230,6 @@ export const geminiProviderPresets: GeminiProviderPreset[] = [
     model: "gemini-3.5-flash",
     description: "CrazyRouter",
     category: "third_party",
-    isPartner: true,
-    partnerPromotionKey: "crazyrouter",
     endpointCandidates: ["https://cn.crazyrouter.com"],
     icon: "crazyrouter",
     iconColor: "#000000",
@@ -260,7 +237,7 @@ export const geminiProviderPresets: GeminiProviderPreset[] = [
   {
     name: "SSSAiCode",
     websiteUrl: "https://sssaicodeapi.com",
-    apiKeyUrl: "https://sssaicodeapi.com/register?ref=DCP0SM",
+    apiKeyUrl: "https://sssaicodeapi.com/register",
     settingsConfig: {
       env: {
         GOOGLE_GEMINI_BASE_URL: "https://node-hk.sssaicodeapi.com/api",
@@ -271,8 +248,6 @@ export const geminiProviderPresets: GeminiProviderPreset[] = [
     model: "gemini-3.5-flash",
     description: "SSSAiCode",
     category: "third_party",
-    isPartner: true,
-    partnerPromotionKey: "sssaicode",
     endpointCandidates: [
       "https://node-hk.sssaicodeapi.com/api",
       "https://node-hk.sssaiapi.com/api",
@@ -295,8 +270,6 @@ export const geminiProviderPresets: GeminiProviderPreset[] = [
     model: "gemini-3.5-flash",
     description: "CTok",
     category: "third_party",
-    isPartner: true,
-    partnerPromotionKey: "ctok",
     endpointCandidates: ["https://api.ctok.ai/v1beta"],
     icon: "ctok",
     iconColor: "#000000",
@@ -339,7 +312,7 @@ export const geminiProviderPresets: GeminiProviderPreset[] = [
   {
     name: "LemonData",
     websiteUrl: "https://lemondata.cc",
-    apiKeyUrl: "https://lemondata.cc/r/FFX1ZDUP",
+    apiKeyUrl: "https://lemondata.cc",
     settingsConfig: {
       env: {
         GOOGLE_GEMINI_BASE_URL: "https://api.lemondata.cc",
@@ -350,8 +323,6 @@ export const geminiProviderPresets: GeminiProviderPreset[] = [
     model: "gemini-3.5-flash",
     description: "LemonData",
     category: "third_party",
-    isPartner: true,
-    partnerPromotionKey: "lemondata",
     endpointCandidates: ["https://api.lemondata.cc"],
     icon: "lemondata",
   },

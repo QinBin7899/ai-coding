@@ -28,7 +28,7 @@ interface UpdateContextValue {
 const UpdateContext = createContext<UpdateContextValue | undefined>(undefined);
 
 export function UpdateProvider({ children }: { children: React.ReactNode }) {
-  const DISMISSED_VERSION_KEY = "ccswitch:update:dismissedVersion";
+  const DISMISSED_VERSION_KEY = "aicoding:update:dismissedVersion";
   const LEGACY_DISMISSED_KEY = "dismissedUpdateVersion"; // 兼容旧键
 
   const [hasUpdate, setHasUpdate] = useState(false);

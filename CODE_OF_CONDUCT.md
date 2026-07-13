@@ -38,7 +38,7 @@ This Code of Conduct applies within all community spaces, and also applies when 
 
 ## Enforcement
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the community leaders responsible for enforcement at **farion1231@gmail.com**. All complaints will be reviewed and investigated promptly and fairly.
+Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the project maintainers through GitHub Issues or GitHub Security Advisories when privacy is required. All complaints will be reviewed and investigated promptly and fairly.
 
 All community leaders are obligated to respect the privacy and security of the reporter of any incident.
 
@@ -128,7 +128,7 @@ For answers to common questions about this code of conduct, see the FAQ at [http
 
 ## 监督
 
-辱骂、骚扰或其他不可接受的行为可通过 **farion1231@gmail.com** 向负责监督的社区领袖报告。所有投诉都将得到及时和公平的审查和调查。
+辱骂、骚扰或其他不可接受的行为可通过 GitHub Issues 向项目维护者报告；如涉及隐私或安全问题，请使用 GitHub Security Advisories。所有投诉都将得到及时和公平的审查和调查。
 
 所有社区领袖都有义务尊重任何事件报告者的隐私和安全。
 

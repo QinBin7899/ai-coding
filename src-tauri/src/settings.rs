@@ -98,7 +98,7 @@ pub struct WebDavSyncStatus {
 }
 
 fn default_remote_root() -> String {
-    "cc-switch-sync".to_string()
+    "ai-coding-sync".to_string()
 }
 fn default_profile() -> String {
     "default".to_string()

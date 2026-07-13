@@ -39,7 +39,7 @@ interface ConfigLoadErrorPayload {
 async function handleConfigLoadError(
   payload: ConfigLoadErrorPayload | null,
 ): Promise<void> {
-  const path = payload?.path ?? "~/.cc-switch/config.json";
+  const path = payload?.path ?? "~/.ai-coding/config.json";
   const detail = payload?.error ?? "Unknown error";
 
   await message(
@@ -89,7 +89,7 @@ async function bootstrap() {
   ReactDOM.createRoot(document.getElementById("root")!).render(
     <React.StrictMode>
       <QueryClientProvider client={queryClient}>
-        <ThemeProvider defaultTheme="dark" storageKey="cc-switch-theme">
+        <ThemeProvider defaultTheme="dark" storageKey="ai-coding-theme">
           <UpdateProvider>
             <App />
             <Toaster />

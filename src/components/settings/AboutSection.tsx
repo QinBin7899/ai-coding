@@ -370,13 +370,13 @@ export function AboutSection({ isPortable }: AboutSectionProps) {
 
       if (!displayVersion) {
         await settingsApi.openExternal(
-          "https://github.com/farion1231/ai-coding/releases",
+          "https://github.com/QinBin7899/ai-coding/releases",
         );
         return;
       }
 
       await settingsApi.openExternal(
-        `https://github.com/farion1231/ai-coding/releases/tag/${displayVersion}`,
+        `https://github.com/QinBin7899/ai-coding/releases/tag/${displayVersion}`,
       );
     } catch (error) {
       console.error("[AboutSection] Failed to open release notes", error);
@@ -798,7 +798,7 @@ export function AboutSection({ isPortable }: AboutSectionProps) {
             variant="outline"
             size="sm"
             onClick={() =>
-              settingsApi.openExternal("https://github.com/farion1231/ai-coding")
+              settingsApi.openExternal("https://github.com/QinBin7899/ai-coding")
             }
             className="h-8 gap-1.5 text-xs"
           >
@@ -811,7 +811,7 @@ export function AboutSection({ isPortable }: AboutSectionProps) {
             size="sm"
             onClick={() =>
               settingsApi.openExternal(
-                "https://github.com/farion1231/ai-coding",
+                "https://github.com/QinBin7899/ai-coding",
               )
             }
             className="h-8 gap-1.5 text-xs"

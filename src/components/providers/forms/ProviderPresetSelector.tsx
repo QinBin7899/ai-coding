@@ -15,7 +15,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { ClaudeIcon, CodexIcon, GeminiIcon } from "@/components/BrandIcons";
-import { ArrowUpAZ, Search, Zap, Star, Layers, Settings2 } from "lucide-react";
+import { ArrowUpAZ, Search, Zap, Layers, Settings2 } from "lucide-react";
 import type { ProviderPreset } from "@/config/claudeProviderPresets";
 import type { CodexProviderPreset } from "@/config/codexProviderPresets";
 import type { GeminiProviderPreset } from "@/config/geminiProviderPresets";
@@ -469,7 +469,6 @@ export function ProviderPresetSelector({
                 <div className="flex flex-wrap gap-2">
                   {entries.map((entry) => {
                     const isSelected = selectedPresetId === entry.id;
-                    const isPartner = entry.preset.isPartner;
                     const presetCategory = entry.preset.category ?? "others";
                     return (
                       <button
@@ -485,11 +484,6 @@ export function ProviderPresetSelector({
                       >
                         {renderPresetIcon(entry.preset)}
                         {getPresetDisplayName(entry.preset, t)}
-                        {isPartner && (
-                          <span className="absolute -top-1 -right-1 flex items-center gap-0.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-500 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-md">
-                            <Star className="h-2.5 w-2.5 fill-current" />
-                          </span>
-                        )}
                       </button>
                     );
                   })}
