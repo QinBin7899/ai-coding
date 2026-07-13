@@ -4,44 +4,70 @@
   <img src="assets/branding/ai-coding-wordmark.png" alt="AI Coding" width="520" />
 </p>
 
-AI Coding 是一个桌面端 AI 编程工具管理器。它把多个 AI 编程 App、模型供应商、提示词、MCP、Skills、会话和工作区管理整合到一个界面里，方便你统一切换和维护。
+<p align="center">
+  <strong>一个为 AI 编程工具而生的模型供应商切换中枢。</strong><br />
+  统一管理 Claude Code、Claude Desktop、Codex、Gemini CLI、OpenCode、OpenClaw、Hermes、bincode，让国产模型和海外模型都能顺手切换。
+</p>
 
-## 界面截图
+AI Coding 不是普通聊天壳，而是给 AI 编程用户准备的桌面控制台：把供应商、模型、API Key、代理路由、MCP、Skills、提示词、会话记录、记忆同步和用量统计放到一个地方管理。它适合经常在国产模型和国外模型之间切换，也适合同时使用多个 AI 编程工具的开发者。
 
-| 主界面 | 添加供应商 |
+## 界面预览
+
+> 以下截图均来自当前 AI Coding 版本，不使用第三方示例图。
+
+| 跨工具记忆同步 | 添加供应商分类 |
 | --- | --- |
-| ![主界面](assets/screenshots/main-zh.png) | ![添加供应商](assets/screenshots/add-zh.png) |
+| ![跨工具记忆同步](assets/screenshots/ai-coding-memory-sync.png) | ![添加供应商分类](assets/screenshots/ai-coding-add-provider.png) |
 
-## 当前支持
+| macOS Dock 风格导航 | 会话导出 Markdown |
+| --- | --- |
+| ![macOS Dock 风格导航](assets/screenshots/ai-coding-dock.png) | ![会话导出 Markdown](assets/screenshots/ai-coding-session-export.png) |
 
-- Claude Code
-- Claude Desktop
-- Codex
-- Gemini CLI
-- OpenCode
-- bincode
-- OpenClaw
-- Hermes
+![设置页面](assets/screenshots/ai-coding-settings.png)
 
-其中 `bincode` 在这个分支里按 OpenCode 兼容协议接入，并且已经加入了应用切换。
+## 核心亮点
 
-## 这个开源版包含什么
+- **国产模型 / 海外模型自由切换**：添加供应商时按“国模 / 自定义配置 / 美模（海外模型）”分区，内置 DeepSeek、Kimi、智谱 GLM、千帆、百炼、SiliconFlow、ModelScope、Claude、Gemini、OpenAI 兼容服务、AWS Bedrock 等常见选择。
+- **同时管理 8 个 AI 编程 App**：支持 Claude Code、Claude Desktop、Codex、Gemini CLI、OpenCode、OpenClaw、Hermes 和 bincode；其中 bincode 按 OpenCode 兼容方式接入，可独立显示和切换。
+- **跨工具记忆同步**：一键把 Claude Code 的 `CLAUDE.md` 记忆同步到 Codex、Gemini、Hermes、OpenCode、OpenClaw 等工具，不用每个工具手动复制一遍。
+- **会话管理与 Markdown 导出**：集中查看本地 AI 编程会话，支持搜索、恢复会话命令、删除会话，并可把当前会话一键导出为 `.md` 文件，方便归档、复盘和发给别人。
+- **Apple 风格深色界面**：默认深色模式，暖橙主色，底部 macOS Dock 风格导航，图标支持悬停动态放大和名称提示，整体更接近桌面 App 的使用体验。
+- **统一 MCP 管理**：管理 MCP Server，并同步到 Claude、Codex、Gemini、OpenCode、Hermes 等工具，减少多份配置重复维护。
+- **统一 Skills 管理**：支持 Skills 导入、安装、同步、备份和发现，可使用统一目录 `~/.agents/skills` 管理技能脚本。
+- **提示词管理**：集中维护不同工具的提示词配置，支持导入已有提示词文件并同步到目标应用。
+- **代理与路由能力**：内置本地代理、路由切换、健康检查、自动故障转移、熔断和模型映射能力，适合把不同模型供应商接入同一套 AI 编程工作流。
+- **用量统计与成本分析**：解析本地会话和代理请求日志，按模型、供应商、时间趋势统计 token、请求量和费用，帮助你知道钱花到哪里了。
+- **配置备份与迁移**：支持导入/导出配置、WebDAV/S3 同步、全局代理、语言与主题设置，方便多设备迁移或团队共享基础配置。
 
-- 暖橙色 + 深色的 Apple 风格界面
-- 底部悬浮 Dock 风格导航
-- 多 AI 编程工具的供应商切换
-- Prompt、Skills、MCP、Sessions、Workspace、Memory、Tools、Settings 等视图
-- `bincode` 品牌接入
-- 去掉激活码拦截的开源版本
+## 支持的应用
+
+| 应用 | 说明 |
+| --- | --- |
+| Claude Code | Claude CLI 编程工具 |
+| Claude Desktop | Claude 桌面端配置管理 |
+| Codex | Codex CLI / Codex 相关配置 |
+| Gemini CLI | Gemini 命令行工具 |
+| OpenCode | OpenCode 协议与配置 |
+| OpenClaw | OpenClaw 配置、工具与默认 Agents |
+| Hermes | Hermes Agent 记忆与 Skills |
+| bincode | 基于 OpenCode 兼容协议接入的独立应用入口 |
+
+## 适合谁用
+
+- 你经常在国产模型和国外模型之间切换，不想每个 CLI 都重复配置。
+- 你同时使用 Claude Code、Codex、Gemini、OpenCode 等多个 AI 编程工具。
+- 你想把 MCP、Skills、提示词和记忆沉淀成一套可复用的个人工作台。
+- 你想把重要 AI 会话导出成 Markdown，方便沉淀成文档或发给朋友。
+- 你希望本地代理、模型路由、失败切换和用量统计有一个统一入口。
 
 ## 开源版说明
 
-这个仓库当前整理的是一个适合公开发布、二次开发、自行构建的开源版本。
+这个仓库整理的是适合公开发布、二次开发和自行构建的开源版本。
 
-- 当前仓库版本已经移除了激活码入口和前后端激活校验依赖。
-- 也就是说，这个开源版不需要再输入激活码才可以进入软件。
-- 如果你以后要做商业闭源版，可以再单独把授权逻辑接回去。
-- 为了兼容历史配置，部分底层配置目录名称暂时仍沿用旧路径，没有强行迁移。
+- 当前开源版已经移除激活码入口和前后端激活校验，不需要输入激活码即可使用。
+- 商业或私有版本如果需要授权体系，可以在自己的分支中重新接入。
+- 为了兼容历史用户配置，部分底层目录仍会保留旧路径命名，这是迁移兼容设计，不影响产品名称。
+- 如需使用某些 OAuth 能力，请通过环境变量配置自己的 Client ID / Secret，不要把密钥提交到仓库。
 
 ## 本地开发
 
@@ -59,10 +85,17 @@ pnpm install
 pnpm tauri dev
 ```
 
-### 打包
+### 打包桌面应用
 
 ```bash
 pnpm tauri build
+```
+
+macOS 构建产物通常位于：
+
+```text
+src-tauri/target/release/bundle/macos/AI Coding.app
+src-tauri/target/release/bundle/dmg/
 ```
 
 ## 项目结构
@@ -70,18 +103,8 @@ pnpm tauri build
 ```text
 src/          React + TypeScript 前端
 src-tauri/    Rust + Tauri 后端
-assets/       截图与品牌资源
+assets/       品牌资源与产品截图
 ```
-
-## 发布到 GitHub 时建议这样展示
-
-- 顶部放软件名称和一句简介
-- 放 2 张核心截图
-- 列出支持的 App
-- 给出本地运行和打包命令
-- 明确说明这是“开源版，无激活码限制”
-
-这个 `README_ZH.md` 已经可以直接作为你公开仓库的中文说明。
 
 ## License
 
