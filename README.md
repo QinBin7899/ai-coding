@@ -70,7 +70,15 @@ This repository is prepared as an open-source build for self-hosting, learning, 
 
 ## Download
 
-Prebuilt installers should be published through GitHub Releases. For macOS users, upload the generated `.dmg` file as a release asset so users can download and install it directly.
+### macOS
+
+Download the current Apple Silicon build:
+
+[Download AI Coding v3.16.2 for macOS Apple Silicon](downloads/AI-Coding-v3.16.2-macOS-aarch64.dmg)
+
+Open the `.dmg` file, then drag **AI Coding** into the Applications folder.
+
+> A GitHub Release asset is still the recommended distribution format for larger releases. This repository also keeps the current `.dmg` under `downloads/` so users can download it directly from the project page.
 
 The macOS build output is usually located at:
 
