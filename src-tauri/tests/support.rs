@@ -7,7 +7,7 @@ use cc_switch_lib::{update_settings, AppSettings, AppState, Database, MultiAppCo
 pub fn ensure_test_home() -> &'static Path {
     static HOME: OnceLock<PathBuf> = OnceLock::new();
     HOME.get_or_init(|| {
-        let base = std::env::temp_dir().join("cc-switch-test-home");
+        let base = std::env::temp_dir().join("ai-coding-test-home");
         if base.exists() {
             let _ = std::fs::remove_dir_all(&base);
         }
@@ -29,7 +29,7 @@ pub fn reset_test_fs() {
     for sub in [
         ".claude",
         ".codex",
-        ".cc-switch",
+        ".ai-coding",
         ".gemini",
         ".config",
         ".openclaw",

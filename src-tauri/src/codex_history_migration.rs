@@ -25,7 +25,7 @@ use toml_edit::DocumentMut;
 
 const MIGRATION_NAME: &str = "codex-history-provider-migration-v1";
 const CODEX_STATE_DB_FILENAME: &str = "state_5.sqlite";
-const LEGACY_CC_SWITCH_CODEX_MODEL_PROVIDER_ID: &str = "ccswitch";
+const LEGACY_CC_SWITCH_CODEX_MODEL_PROVIDER_ID: &str = "aicoding";
 // If a Codex preset ever used a temporary routing key, keep that old key here
 // so local history can be bucketed under the current custom provider id.
 const CC_SWITCH_LEGACY_CODEX_MODEL_PROVIDER_IDS: &[&str] = &[
@@ -856,13 +856,13 @@ base_url = "https://aihubmix.example/v1"
                 None,
             ),
             Provider::with_id(
-                "legacy-ccswitch".to_string(),
-                "Legacy CC Switch".to_string(),
+                "legacy-aicoding".to_string(),
+                "Legacy AI Coding".to_string(),
                 serde_json::json!({
                     "auth": {},
-                    "config": r#"model_provider = "ccswitch"
+                    "config": r#"model_provider = "aicoding"
 
-[model_providers.ccswitch]
+[model_providers.aicoding]
 name = "AIHubMix"
 base_url = "https://aihubmix.example/v1"
 "#
@@ -928,7 +928,7 @@ base_url = "https://proxy.example/v1"
         let source_provider_ids = collect_source_model_provider_ids(&db).expect("collect ids");
         assert_eq!(
             source_provider_ids,
-            source_ids(&["aihubmix", "ccswitch", "rightcode"])
+            source_ids(&["aihubmix", "aicoding", "rightcode"])
         );
 
         let session_dir = codex_dir.join("sessions/2026/05/28");
@@ -939,7 +939,7 @@ base_url = "https://proxy.example/v1"
             concat!(
                 "{\"type\":\"session_meta\",\"payload\":{\"id\":\"s1\",\"model_provider\":\"rightcode\"}}\n",
                 "{\"type\":\"session_meta\",\"payload\":{\"id\":\"s2\",\"model_provider\":\"aihubmix\"}}\n",
-                "{\"type\":\"session_meta\",\"payload\":{\"id\":\"s3\",\"model_provider\":\"ccswitch\"}}\n",
+                "{\"type\":\"session_meta\",\"payload\":{\"id\":\"s3\",\"model_provider\":\"aicoding\"}}\n",
                 "{\"type\":\"session_meta\",\"payload\":{\"id\":\"s4\",\"model_provider\":\"my-private-relay\"}}\n",
                 "{\"type\":\"session_meta\",\"payload\":{\"id\":\"s5\",\"model_provider\":\"openai\"}}\n",
                 "{\"type\":\"session_meta\",\"payload\":{\"id\":\"s6\",\"model_provider\":\"custom\"}}\n",
@@ -974,7 +974,7 @@ base_url = "https://proxy.example/v1"
             INSERT INTO threads (id, model_provider) VALUES
                 ('rightcode-thread', 'rightcode'),
                 ('aihubmix-thread', 'aihubmix'),
-                ('ccswitch-thread', 'ccswitch'),
+                ('aicoding-thread', 'aicoding'),
                 ('manual-thread', 'my-private-relay'),
                 ('openai-thread', 'openai'),
                 ('custom-thread', 'custom');",
@@ -1023,7 +1023,7 @@ base_url = "https://proxy.example/v1"
                     .map(String::as_str)
                     .collect::<Vec<_>>()
             ),
-            source_ids(&["legacy-ccswitch", "rightcode"])
+            source_ids(&["legacy-aicoding", "rightcode"])
         );
 
         let config_provider_id = |provider_id: &str| -> String {
@@ -1050,17 +1050,17 @@ base_url = "https://proxy.example/v1"
             .and_then(|value| value.get("aihubmix"))
             .is_none());
 
-        let ccswitch_config: toml::Value =
-            toml::from_str(&config_provider_id("legacy-ccswitch")).expect("parse ccswitch config");
+        let aicoding_config: toml::Value =
+            toml::from_str(&config_provider_id("legacy-aicoding")).expect("parse aicoding config");
         assert_eq!(
-            ccswitch_config
+            aicoding_config
                 .get("model_provider")
                 .and_then(|value| value.as_str()),
             Some("custom")
         );
-        assert!(ccswitch_config
+        assert!(aicoding_config
             .get("model_providers")
-            .and_then(|value| value.get("ccswitch"))
+            .and_then(|value| value.get("aicoding"))
             .is_none());
 
         let manual_config: toml::Value =
@@ -1378,14 +1378,14 @@ model_provider = "my-private-relay"
     }
 
     #[test]
-    fn collects_legacy_ccswitch_provider_id_from_stored_config() {
+    fn collects_legacy_aicoding_provider_id_from_stored_config() {
         let db = Database::memory().expect("memory db");
         let mut provider = Provider::with_id(
             "generated-uuid".to_string(),
             "Legacy Stable".to_string(),
             serde_json::json!({
                 "auth": {},
-                "config": "model_provider = \"ccswitch\"\n\n[model_providers.ccswitch]\nname = \"AIHubMix\"\nbase_url = \"https://aihubmix.example/v1\""
+                "config": "model_provider = \"aicoding\"\n\n[model_providers.aicoding]\nname = \"AIHubMix\"\nbase_url = \"https://aihubmix.example/v1\""
             }),
             None,
         );
@@ -1394,7 +1394,7 @@ model_provider = "my-private-relay"
         db.save_provider("codex", &provider).expect("save provider");
 
         let ids = collect_source_model_provider_ids(&db).expect("collect ids");
-        assert!(ids.contains("ccswitch"));
+        assert!(ids.contains("aicoding"));
         assert!(ids.contains("aihubmix"));
         assert!(!ids.contains("generated-uuid"));
     }
@@ -1480,16 +1480,16 @@ model = "gpt-5.4"
     }
 
     #[test]
-    fn migrates_legacy_ccswitch_provider_template_to_custom() {
+    fn migrates_legacy_aicoding_provider_template_to_custom() {
         let db = Database::memory().expect("memory db");
         let provider = Provider::with_id(
-            "legacy-ccswitch".to_string(),
-            "Legacy CC Switch".to_string(),
+            "legacy-aicoding".to_string(),
+            "Legacy AI Coding".to_string(),
             serde_json::json!({
                 "auth": {},
-                "config": r#"model_provider = "ccswitch"
+                "config": r#"model_provider = "aicoding"
 
-[model_providers.ccswitch]
+[model_providers.aicoding]
 name = "AIHubMix"
 base_url = "https://aihubmix.example/v1"
 "#
@@ -1501,11 +1501,11 @@ base_url = "https://aihubmix.example/v1"
         let (outcome, _backup_dir) = migrate_provider_templates_for_test(&db);
         assert_eq!(
             outcome.migrated_provider_ids,
-            vec!["legacy-ccswitch".to_string()]
+            vec!["legacy-aicoding".to_string()]
         );
 
         let saved = db
-            .get_provider_by_id("legacy-ccswitch", "codex")
+            .get_provider_by_id("legacy-aicoding", "codex")
             .expect("get provider")
             .expect("provider exists");
         let config_text = saved
@@ -1523,7 +1523,7 @@ base_url = "https://aihubmix.example/v1"
         );
         assert!(parsed
             .get("model_providers")
-            .and_then(|value| value.get("ccswitch"))
+            .and_then(|value| value.get("aicoding"))
             .is_none());
         assert_eq!(
             parsed

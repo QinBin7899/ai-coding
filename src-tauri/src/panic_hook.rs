@@ -173,7 +173,7 @@ Stack Trace (Backtrace)
             let _ = file.flush();
 
             // 记录日志文件位置到 stderr
-            eprintln!("\n[CC-Switch] Crash log saved to: {}", log_path.display());
+            eprintln!("\n[AI-Coding] Crash log saved to: {}", log_path.display());
         }
 
         // 同时输出到 stderr（便于开发调试）
@@ -192,7 +192,7 @@ mod tests {
     fn test_crash_log_path() {
         let path = get_crash_log_path();
         assert!(path.ends_with("crash.log"));
-        assert!(path.to_string_lossy().contains(".cc-switch"));
+        assert!(path.to_string_lossy().contains(".ai-coding"));
     }
 
     #[test]

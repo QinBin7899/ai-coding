@@ -680,9 +680,9 @@
     "skillStorage": {
       "title": "Skill Storage Location",
       "description": "Choose where AI Coding stores the master copies of your skills",
-      "ccSwitch": "AI Coding",
+      "aiCoding": "AI Coding",
       "unified": "~/.agents/skills",
-      "ccSwitchHint": "Skills are stored in ~/.ai-coding/skills/ and synced to each app via symlink or copy.",
+      "aiCodingHint": "Skills are stored in ~/.ai-coding/skills/ and synced to each app via symlink or copy.",
       "unifiedHint": "Skills are stored in ~/.agents/skills/, the Agent Skills open standard. Compatible tools (Claude Code, Codex, Gemini CLI, etc.) discover skills here natively.",
       "confirmTitle": "Migrate Skill Storage",
       "confirmMessage": "{{count}} skill(s) will be moved to the new location. Continue?",

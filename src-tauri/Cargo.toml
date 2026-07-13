@@ -4,7 +4,7 @@ version = "3.16.2"
 description = "AI Coding - AI CLI 配置管理工具"
 authors = ["Jason Young"]
 license = "MIT"
-repository = "https://github.com/farion1231/ai-coding"
+repository = "https://github.com/bincode-model/ai-coding"
 edition = "2021"
 rust-version = "1.85.0"
 
