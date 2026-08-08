@@ -1210,6 +1210,19 @@ pub fn import_default_config(state: &AppState, app_type: AppType) -> Result<bool
         }
     };
 
+    // 空快照没有任何可保护的供应商配置，导入只会生成一个无意义的空 "default"
+    // 条目并被设为 current（例如 Claude 的 settings.json 恰好为 {} 时）。
+    if settings_config
+        .as_object()
+        .is_some_and(serde_json::Map::is_empty)
+    {
+        return Err(AppError::localized(
+            "provider.import.live_empty",
+            "Live 配置为空，没有可导入的供应商配置",
+            "The live config is empty; there is no provider configuration to import",
+        ));
+    }
+
     let mut provider = Provider::with_id(
         "default".to_string(),
         "default".to_string(),

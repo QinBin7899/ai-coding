@@ -192,7 +192,7 @@ mod tests {
     fn test_crash_log_path() {
         let path = get_crash_log_path();
         assert!(path.ends_with("crash.log"));
-        assert!(path.to_string_lossy().contains(".ai-coding"));
+        assert!(path.to_string_lossy().contains(".zhongguoai"));
     }
 
     #[test]

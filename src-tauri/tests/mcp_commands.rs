@@ -60,7 +60,7 @@ fn import_default_config_claude_persists_provider() {
     );
 
     // 验证数据已持久化到数据库（v3.7.0+ 使用 SQLite 而非 config.json）
-    let db_path = home.join(".ai-coding").join("ai-coding.db");
+    let db_path = cc_switch_lib::get_app_config_dir().join("ai-coding.db");
     assert!(
         db_path.exists(),
         "importing default config should persist to ai-coding.db"
@@ -143,7 +143,7 @@ fn import_mcp_from_claude_creates_config_and_enables_servers() {
     );
 
     // 验证数据已持久化到数据库
-    let db_path = home.join(".ai-coding").join("ai-coding.db");
+    let db_path = cc_switch_lib::get_app_config_dir().join("ai-coding.db");
     assert!(
         db_path.exists(),
         "state.save should persist to ai-coding.db when changes detected"

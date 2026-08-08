@@ -1,5 +1,10 @@
 # Changelog
 
+## v3.17.1 - 2026-08-08
+
+- Fixed startup importing an empty live config as a meaningless "default" provider entry (e.g. a Claude `settings.json` that is just `{}`): empty snapshots are now skipped instead of being saved and marked current.
+- Fixed the Rust integration test suite, which had been silently broken since the rebrand: test isolation now cleans the app database directory, and stale `.ai-coding`/`cc switch` path and naming expectations were updated to the current layout.
+
 ## v3.17.0 - 2026-08-08
 
 - Added chat archive to the session manager: sessions can be moved into a separate "Archived" tab in the left list to keep the main list clean.

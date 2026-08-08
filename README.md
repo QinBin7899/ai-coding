@@ -74,7 +74,7 @@ This repository is prepared as an open-source build for self-hosting, learning, 
 
 Download the current Apple Silicon build:
 
-[Download AI Coding v3.17.0 for macOS Apple Silicon](downloads/AI-Coding-v3.17.0-macOS-aarch64.dmg)
+[Download AI Coding v3.17.1 for macOS Apple Silicon](downloads/AI-Coding-v3.17.1-macOS-aarch64.dmg)
 
 Open the `.dmg` file, then drag **AI Coding** into the Applications folder.
 

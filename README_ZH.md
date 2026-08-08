@@ -73,7 +73,7 @@ AI Coding 不是普通聊天壳，而是给 AI 编程用户准备的桌面控制
 
 ### macOS（Apple Silicon）
 
-[下载 AI Coding v3.17.0 macOS 安装包](downloads/AI-Coding-v3.17.0-macOS-aarch64.dmg)
+[下载 AI Coding v3.17.1 macOS 安装包](downloads/AI-Coding-v3.17.1-macOS-aarch64.dmg)
 
 打开 `.dmg` 文件，把 **AI Coding** 拖进「应用程序」文件夹即可。
 

@@ -1186,8 +1186,8 @@ fn sync_current_provider_for_app_keeps_live_takeover_and_updates_restore_backup(
     );
 }
 
-#[test]
-fn switch_codex_provider_with_takeover_live_but_stopped_proxy_keeps_proxy_live_config() {
+#[tokio::test(flavor = "multi_thread")]
+async fn switch_codex_provider_with_takeover_live_but_stopped_proxy_keeps_proxy_live_config() {
     let _guard = test_mutex().lock().expect("acquire test mutex");
     reset_test_fs();
     enable_codex_official_auth_preservation();

@@ -519,10 +519,7 @@ fn switch_provider_updates_claude_live_and_state() {
 
     // v3.7.0+ 使用 SQLite 数据库而非 config.json
     // 验证数据已持久化到数据库
-    let home_dir = std::env::var("HOME").expect("HOME should be set by ensure_test_home");
-    let db_path = std::path::Path::new(&home_dir)
-        .join(".ai-coding")
-        .join("ai-coding.db");
+    let db_path = cc_switch_lib::get_app_config_dir().join("ai-coding.db");
     assert!(
         db_path.exists(),
         "switching provider should persist to ai-coding.db"
@@ -613,5 +610,31 @@ fn import_refuses_live_config_under_proxy_takeover() {
     assert!(
         providers.is_empty(),
         "taken-over live import must not create providers"
+    );
+}
+
+#[test]
+fn claude_startup_import_skips_empty_live_settings() {
+    let _guard = test_mutex().lock().expect("acquire test mutex");
+    reset_test_fs();
+    let home = ensure_test_home();
+
+    // Claude settings.json 恰好为空对象：没有任何可导入的供应商配置
+    let claude_dir = home.join(".claude");
+    std::fs::create_dir_all(&claude_dir).expect("create .claude dir");
+    std::fs::write(claude_dir.join("settings.json"), "{}").expect("write empty settings");
+
+    let state = create_test_state().expect("create test state");
+
+    import_default_config_test_hook(&state, AppType::Claude)
+        .expect_err("importing an empty live config must fail instead of creating 'default'");
+
+    let providers = state
+        .db
+        .get_all_providers(AppType::Claude.as_str())
+        .expect("get claude providers");
+    assert!(
+        providers.is_empty(),
+        "empty live import must not create providers"
     );
 }
