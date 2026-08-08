@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSessionSearch } from "@/hooks/useSessionSearch";
+import { useSessionOrganizer } from "@/hooks/useSessionOrganizer";
 import { useTranslation } from "react-i18next";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import {
+  Archive,
   Copy,
   Download,
+  Pin,
   RefreshCw,
   Search,
   Play,
@@ -43,6 +46,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { extractErrorMessage } from "@/utils/errorUtils";
+import { cn } from "@/lib/utils";
 import { isMac } from "@/lib/platform";
 import { ProviderIcon } from "@/components/ProviderIcon";
 import { SessionItem } from "./SessionItem";
@@ -61,13 +65,7 @@ import {
 } from "./utils";
 
 type ProviderFilter =
-  | "all"
-  | "codex"
-  | "claude"
-  | "opencode"
-  | "openclaw"
-  | "gemini"
-  | "hermes";
+  "all" | "codex" | "claude" | "opencode" | "openclaw" | "gemini" | "hermes";
 
 export function SessionManagerPage({ appId }: { appId: string }) {
   const { t } = useTranslation();
@@ -96,6 +94,15 @@ export function SessionManagerPage({ appId }: { appId: string }) {
     appId as ProviderFilter,
   );
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [listTab, setListTab] = useState<"sessions" | "archived">("sessions");
+  const {
+    pinnedKeys,
+    archivedKeys,
+    pinnedOrder,
+    togglePin,
+    toggleArchive,
+    pruneMissing,
+  } = useSessionOrganizer();
 
   // 使用 FlexSearch 全文搜索
   const { search: searchSessions } = useSessionSearch({
@@ -107,29 +114,67 @@ export function SessionManagerPage({ appId }: { appId: string }) {
     return searchSessions(search);
   }, [searchSessions, search]);
 
+  // 按归档状态拆分当前列表，并把置顶会话排到最前
+  const visibleSessions = useMemo(() => {
+    const inTab = filteredSessions.filter((session) => {
+      const isArchived = archivedKeys.has(getSessionKey(session));
+      return listTab === "archived" ? isArchived : !isArchived;
+    });
+    if (listTab === "archived") return inTab;
+    const pinned = inTab.filter((session) =>
+      pinnedKeys.has(getSessionKey(session)),
+    );
+    const rest = inTab.filter(
+      (session) => !pinnedKeys.has(getSessionKey(session)),
+    );
+    pinned.sort(
+      (a, b) => pinnedOrder(getSessionKey(a)) - pinnedOrder(getSessionKey(b)),
+    );
+    return [...pinned, ...rest];
+  }, [filteredSessions, listTab, pinnedKeys, archivedKeys, pinnedOrder]);
+
+  const visiblePinnedCount = useMemo(
+    () =>
+      listTab === "sessions"
+        ? visibleSessions.filter((session) =>
+            pinnedKeys.has(getSessionKey(session)),
+          ).length
+        : 0,
+    [visibleSessions, listTab, pinnedKeys],
+  );
+
+  const archivedCount = useMemo(
+    () =>
+      filteredSessions.filter((session) =>
+        archivedKeys.has(getSessionKey(session)),
+      ).length,
+    [filteredSessions, archivedKeys],
+  );
+  const activeCount = filteredSessions.length - archivedCount;
+
   useEffect(() => {
-    if (filteredSessions.length === 0) {
+    if (visibleSessions.length === 0) {
       setSelectedKey(null);
       return;
     }
     const exists = selectedKey
-      ? filteredSessions.some(
+      ? visibleSessions.some(
           (session) => getSessionKey(session) === selectedKey,
         )
       : false;
     if (!exists) {
-      setSelectedKey(getSessionKey(filteredSessions[0]));
+      setSelectedKey(getSessionKey(visibleSessions[0]));
     }
-  }, [filteredSessions, selectedKey]);
+  }, [visibleSessions, selectedKey]);
 
   const selectedSession = useMemo(() => {
     if (!selectedKey) return null;
     return (
-      filteredSessions.find(
+      visibleSessions.find(
         (session) => getSessionKey(session) === selectedKey,
       ) || null
     );
-  }, [filteredSessions, selectedKey]);
+  }, [visibleSessions, selectedKey]);
 
   const { data: messages = [], isLoading: isLoadingMessages } =
     useSessionMessagesQuery(
@@ -152,6 +197,12 @@ export function SessionManagerPage({ appId }: { appId: string }) {
       scrollContainerRef.current.scrollTop = 0;
     }
   }, [selectedKey]);
+
+  // 会话数据加载后，清理已删除会话残留的置顶/归档记录
+  useEffect(() => {
+    if (sessions.length === 0) return;
+    pruneMissing(new Set(sessions.map((session) => getSessionKey(session))));
+  }, [sessions, pruneMissing]);
 
   useEffect(() => {
     const validKeys = new Set(
@@ -237,7 +288,9 @@ export function SessionManagerPage({ appId }: { appId: string }) {
       selectedSession.projectDir
         ? `- Project: ${selectedSession.projectDir}`
         : null,
-      selectedSession.sourcePath ? `- Source: ${selectedSession.sourcePath}` : null,
+      selectedSession.sourcePath
+        ? `- Source: ${selectedSession.sourcePath}`
+        : null,
       selectedSession.createdAt
         ? `- Created: ${formatTimestamp(selectedSession.createdAt)}`
         : null,
@@ -420,9 +473,39 @@ export function SessionManagerPage({ appId }: { appId: string }) {
     }
   };
 
+  const handleTogglePin = useCallback(
+    (session: SessionMeta) => {
+      const key = getSessionKey(session);
+      const wasPinned = pinnedKeys.has(key);
+      togglePin(key);
+      toast.success(
+        wasPinned
+          ? t("sessionManager.unpinnedToast", { defaultValue: "已取消置顶" })
+          : t("sessionManager.pinnedToast", { defaultValue: "已置顶该会话" }),
+      );
+    },
+    [pinnedKeys, togglePin, t],
+  );
+
+  const handleToggleArchive = useCallback(
+    (session: SessionMeta) => {
+      const key = getSessionKey(session);
+      const wasArchived = archivedKeys.has(key);
+      toggleArchive(key);
+      toast.success(
+        wasArchived
+          ? t("sessionManager.unarchivedToast", {
+              defaultValue: "已移回会话列表",
+            })
+          : t("sessionManager.archivedToast", { defaultValue: "已归档该会话" }),
+      );
+    },
+    [archivedKeys, toggleArchive, t],
+  );
+
   const deletableFilteredSessions = useMemo(
-    () => filteredSessions.filter((session) => Boolean(session.sourcePath)),
-    [filteredSessions],
+    () => visibleSessions.filter((session) => Boolean(session.sourcePath)),
+    [visibleSessions],
   );
 
   const selectedSessions = useMemo(
@@ -588,7 +671,7 @@ export function SessionManagerPage({ appId }: { appId: string }) {
                           {t("sessionManager.sessionList")}
                         </CardTitle>
                         <Badge variant="secondary" className="text-xs">
-                          {filteredSessions.length}
+                          {visibleSessions.length}
                         </Badge>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
@@ -764,6 +847,45 @@ export function SessionManagerPage({ appId }: { appId: string }) {
                         </Tooltip>
                       </div>
                     </div>
+                    {/* 会话 / 归档 切换 */}
+                    <div className="flex items-center rounded-lg bg-muted/60 p-0.5">
+                      <button
+                        type="button"
+                        onClick={() => setListTab("sessions")}
+                        className={cn(
+                          "flex-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors",
+                          listTab === "sessions"
+                            ? "bg-background text-foreground font-medium shadow-sm"
+                            : "text-muted-foreground hover:text-foreground",
+                        )}
+                      >
+                        <MessageSquare className="size-3" />
+                        {t("sessionManager.tabSessions", {
+                          defaultValue: "会话",
+                        })}
+                        <span className="text-[10px] text-muted-foreground">
+                          {activeCount}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setListTab("archived")}
+                        className={cn(
+                          "flex-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors",
+                          listTab === "archived"
+                            ? "bg-background text-foreground font-medium shadow-sm"
+                            : "text-muted-foreground hover:text-foreground",
+                        )}
+                      >
+                        <Archive className="size-3" />
+                        {t("sessionManager.tabArchived", {
+                          defaultValue: "已归档",
+                        })}
+                        <span className="text-[10px] text-muted-foreground">
+                          {archivedCount}
+                        </span>
+                      </button>
+                    </div>
                     {selectionMode && (
                       <div className="grid gap-3 rounded-md border bg-muted/40 px-3 py-2.5">
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -842,36 +964,70 @@ export function SessionManagerPage({ appId }: { appId: string }) {
                       <div className="flex items-center justify-center py-12">
                         <RefreshCw className="size-5 animate-spin text-muted-foreground" />
                       </div>
-                    ) : filteredSessions.length === 0 ? (
+                    ) : visibleSessions.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-12 text-center">
-                        <MessageSquare className="size-8 text-muted-foreground/50 mb-2" />
+                        {listTab === "archived" ? (
+                          <Archive className="size-8 text-muted-foreground/50 mb-2" />
+                        ) : (
+                          <MessageSquare className="size-8 text-muted-foreground/50 mb-2" />
+                        )}
                         <p className="text-sm text-muted-foreground">
-                          {t("sessionManager.noSessions")}
+                          {listTab === "archived"
+                            ? t("sessionManager.noArchivedSessions", {
+                                defaultValue: "暂无归档会话",
+                              })
+                            : t("sessionManager.noSessions")}
                         </p>
+                        {listTab === "archived" && (
+                          <p className="text-xs text-muted-foreground/70 mt-1 px-4">
+                            {t("sessionManager.archiveHint", {
+                              defaultValue:
+                                "鼠标悬停会话，点击归档按钮即可收纳到这里",
+                            })}
+                          </p>
+                        )}
                       </div>
                     ) : (
                       <div className="space-y-1">
-                        {filteredSessions.map((session) => {
+                        {visibleSessions.map((session, index) => {
+                          const sessionKey = getSessionKey(session);
                           const isSelected =
-                            selectedKey !== null &&
-                            getSessionKey(session) === selectedKey;
+                            selectedKey !== null && sessionKey === selectedKey;
 
                           return (
-                            <SessionItem
-                              key={getSessionKey(session)}
-                              session={session}
-                              isSelected={isSelected}
-                              selectionMode={selectionMode}
-                              searchQuery={search}
-                              isChecked={selectedSessionKeys.has(
-                                getSessionKey(session),
+                            <div key={sessionKey}>
+                              {visiblePinnedCount > 0 && index === 0 && (
+                                <div className="flex items-center gap-1 px-2 pb-1 text-[11px] text-muted-foreground">
+                                  <Pin className="size-3" />
+                                  {t("sessionManager.pinnedSection", {
+                                    defaultValue: "已置顶",
+                                  })}
+                                </div>
                               )}
-                              isCheckDisabled={!session.sourcePath}
-                              onSelect={setSelectedKey}
-                              onToggleChecked={(checked) =>
-                                toggleSessionChecked(session, checked)
-                              }
-                            />
+                              {visiblePinnedCount > 0 &&
+                                visiblePinnedCount < visibleSessions.length &&
+                                index === visiblePinnedCount && (
+                                  <div className="mt-2 mb-1 border-t border-border/60" />
+                                )}
+                              <SessionItem
+                                session={session}
+                                isSelected={isSelected}
+                                selectionMode={selectionMode}
+                                searchQuery={search}
+                                isChecked={selectedSessionKeys.has(sessionKey)}
+                                isCheckDisabled={!session.sourcePath}
+                                isPinned={pinnedKeys.has(sessionKey)}
+                                isArchived={archivedKeys.has(sessionKey)}
+                                onSelect={setSelectedKey}
+                                onToggleChecked={(checked) =>
+                                  toggleSessionChecked(session, checked)
+                                }
+                                onTogglePin={() => handleTogglePin(session)}
+                                onToggleArchive={() =>
+                                  handleToggleArchive(session)
+                                }
+                              />
+                            </div>
                           );
                         })}
                       </div>

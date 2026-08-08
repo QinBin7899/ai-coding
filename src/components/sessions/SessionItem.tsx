@@ -1,4 +1,11 @@
-import { ChevronRight, Clock } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  ChevronRight,
+  Clock,
+  Pin,
+  PinOff,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -25,8 +32,12 @@ interface SessionItemProps {
   isChecked: boolean;
   isCheckDisabled?: boolean;
   searchQuery?: string;
+  isPinned: boolean;
+  isArchived: boolean;
   onSelect: (key: string) => void;
   onToggleChecked: (checked: boolean) => void;
+  onTogglePin: () => void;
+  onToggleArchive: () => void;
 }
 
 export function SessionItem({
@@ -36,8 +47,12 @@ export function SessionItem({
   isChecked,
   isCheckDisabled = false,
   searchQuery,
+  isPinned,
+  isArchived,
   onSelect,
   onToggleChecked,
+  onTogglePin,
+  onToggleArchive,
 }: SessionItemProps) {
   const { t } = useTranslation();
   const title = formatSessionTitle(session);
@@ -47,7 +62,7 @@ export function SessionItem({
   return (
     <div
       className={cn(
-        "flex items-start gap-2 rounded-lg px-3 py-2.5 transition-all group",
+        "relative flex items-start gap-2 rounded-lg px-3 py-2.5 transition-all group",
         isSelected
           ? "bg-primary/10 border border-primary/30"
           : "hover:bg-muted/60 border border-transparent",
@@ -88,6 +103,9 @@ export function SessionItem({
           <span className="text-sm font-medium line-clamp-2 flex-1">
             {searchQuery ? highlightText(title, searchQuery) : title}
           </span>
+          {isPinned && (
+            <Pin className="size-3.5 text-primary fill-current shrink-0" />
+          )}
           <ChevronRight
             className={cn(
               "size-4 text-muted-foreground/50 shrink-0 transition-transform",
@@ -105,6 +123,71 @@ export function SessionItem({
           </span>
         </div>
       </button>
+
+      {!selectionMode && (
+        <div className="absolute right-2 top-2 hidden group-hover:flex items-center gap-0.5 rounded-md border bg-background/95 px-0.5 py-0.5 shadow-sm">
+          {!isArchived && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="flex size-6 items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label={
+                    isPinned
+                      ? t("sessionManager.unpin", { defaultValue: "取消置顶" })
+                      : t("sessionManager.pin", { defaultValue: "置顶" })
+                  }
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onTogglePin();
+                  }}
+                >
+                  {isPinned ? (
+                    <PinOff className="size-3.5" />
+                  ) : (
+                    <Pin className="size-3.5" />
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {isPinned
+                  ? t("sessionManager.unpin", { defaultValue: "取消置顶" })
+                  : t("sessionManager.pin", { defaultValue: "置顶" })}
+              </TooltipContent>
+            </Tooltip>
+          )}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className="flex size-6 items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                aria-label={
+                  isArchived
+                    ? t("sessionManager.unarchive", {
+                        defaultValue: "取消归档",
+                      })
+                    : t("sessionManager.archive", { defaultValue: "归档" })
+                }
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onToggleArchive();
+                }}
+              >
+                {isArchived ? (
+                  <ArchiveRestore className="size-3.5" />
+                ) : (
+                  <Archive className="size-3.5" />
+                )}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {isArchived
+                ? t("sessionManager.unarchive", { defaultValue: "取消归档" })
+                : t("sessionManager.archive", { defaultValue: "归档" })}
+            </TooltipContent>
+          </Tooltip>
+        </div>
+      )}
     </div>
   );
 }

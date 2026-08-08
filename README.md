@@ -74,9 +74,20 @@ This repository is prepared as an open-source build for self-hosting, learning, 
 
 Download the current Apple Silicon build:
 
-[Download AI Coding v3.16.2 for macOS Apple Silicon](downloads/AI-Coding-v3.16.2-macOS-aarch64.dmg)
+[Download AI Coding v3.17.0 for macOS Apple Silicon](downloads/AI-Coding-v3.17.0-macOS-aarch64.dmg)
 
 Open the `.dmg` file, then drag **AI Coding** into the Applications folder.
+
+#### macOS says the app "is damaged" or won't open
+
+The app is not notarized with Apple yet, so Gatekeeper may block the first launch after download. The file itself is fine. Fix it either way below:
+
+- Open **System Settings → Privacy & Security**, scroll down to the AI Coding message, and click **Open Anyway**; or
+- Run this once in Terminal after copying the app into Applications, then open it normally:
+
+```bash
+xattr -cr "/Applications/AI Coding.app"
+```
 
 > A GitHub Release asset is still the recommended distribution format for larger releases. This repository also keeps the current `.dmg` under `downloads/` so users can download it directly from the project page.
 

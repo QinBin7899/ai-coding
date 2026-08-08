@@ -51,8 +51,8 @@ For end users, publish the compiled macOS installer or app bundle from GitHub Re
 
 Recommended release assets:
 
-- `AI-Coding-v3.16.2-macOS-aarch64.dmg` for Apple Silicon Macs.
-- `AI-Coding-v3.16.2-macOS.zip` as a simple drag-to-Applications archive.
+- `AI-Coding-v3.17.0-macOS-aarch64.dmg` for Apple Silicon Macs.
+- `AI-Coding-v3.17.0-macOS.zip` as a simple drag-to-Applications archive.
 
 Developers can also build locally:
 

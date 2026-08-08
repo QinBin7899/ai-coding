@@ -1,5 +1,12 @@
 # Changelog
 
+## v3.17.0 - 2026-08-08
+
+- Added chat archive to the session manager: sessions can be moved into a separate "Archived" tab in the left list to keep the main list clean.
+- Added session pinning: pinned sessions stay at the top of the session list with a dedicated "Pinned" group.
+- Fixed macOS downloads being blocked by Gatekeeper with a "damaged" error: release builds are now fully ad-hoc signed instead of linker-signed only.
+- Documented how to open the app when macOS blocks the first launch (System Settings "Open Anyway" or `xattr -cr`).
+
 ## v3.16.2 - 2026-07-14
 
 - Rebranded the project as AI Coding.
