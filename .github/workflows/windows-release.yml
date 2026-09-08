@@ -1,0 +1,184 @@
+name: Windows build and release
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/windows-release.yml
+      - scripts/windows-*.ps1
+      - package.json
+      - pnpm-lock.yaml
+      - src/**
+      - tests/**
+      - index.html
+      - vite.config.*
+      - vitest.config.*
+      - tsconfig*.json
+      - tailwind.config.*
+      - postcss.config.*
+      - src-tauri/Cargo.toml
+      - src-tauri/Cargo.lock
+      - src-tauri/tauri*.json
+      - src-tauri/build.rs
+      - src-tauri/wix/**
+      - src-tauri/icons/**
+      - src-tauri/src/**
+      - src-tauri/tests/**
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-release-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: pwsh
+
+jobs:
+  build:
+    name: Verify and package Windows x64
+    runs-on: windows-2022
+    timeout-minutes: 120
+    outputs:
+      version: ${{ steps.metadata.outputs.version }}
+      artifact-name: ${{ steps.metadata.outputs.artifact-name }}
+    env:
+      CI: true
+      CARGO_TERM_COLOR: always
+      CARGO_INCREMENTAL: 0
+      CARGO_PROFILE_DEV_DEBUG: 0
+      CARGO_PROFILE_TEST_DEBUG: 0
+      CARGO_BUILD_TARGET: x86_64-pc-windows-msvc
+      RUSTUP_TOOLCHAIN: stable
+      RUST_TEST_THREADS: 1
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Read and validate release version
+        id: metadata
+        run: ./scripts/windows-release-metadata.ps1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          package-manager-cache: false
+
+      - name: Install the project's exact pnpm version
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          $manager = (Get-Content package.json -Raw | ConvertFrom-Json).packageManager
+          if ($manager -notmatch '^pnpm@\d+\.\d+\.\d+$') { throw "Unexpected package manager: $manager" }
+          npm install --global $manager
+          pnpm config set store-dir "$env:RUNNER_TEMP/pnpm-store"
+          pnpm --version
+
+      - name: Cache downloaded dependencies
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ runner.temp }}/pnpm-store
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: windows-x64-dependencies-${{ hashFiles('pnpm-lock.yaml', 'src-tauri/Cargo.lock') }}
+          restore-keys: windows-x64-dependencies-
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check frontend types
+        run: pnpm typecheck
+
+      - name: Check frontend formatting
+        run: pnpm format:check
+
+      - name: Run frontend tests on Windows
+        run: pnpm test:unit
+
+      - name: Build production frontend
+        run: pnpm build:renderer
+
+      - name: Set up Rust with official rustup
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          rustup toolchain install stable --profile minimal --component clippy --component rustfmt --no-self-update
+          rustup target add x86_64-pc-windows-msvc
+          rustc --version
+          cargo --version
+          $env:CC_SWITCH_TEST_HOME = Join-Path $env:RUNNER_TEMP 'ai-coding-rust-test-home'
+          "CC_SWITCH_TEST_HOME=$env:CC_SWITCH_TEST_HOME" >> $env:GITHUB_ENV
+          New-Item -ItemType Directory -Force $env:CC_SWITCH_TEST_HOME | Out-Null
+
+      - name: Check Rust formatting
+        run: cargo fmt --check --manifest-path src-tauri/Cargo.toml
+
+      - name: Check Windows Rust targets
+        run: cargo check --locked --manifest-path src-tauri/Cargo.toml --all-targets --features test-hooks
+
+      - name: Lint Windows Rust targets
+        run: cargo clippy --locked --manifest-path src-tauri/Cargo.toml --all-targets --features test-hooks -- -D warnings
+
+      - name: Test Rust with an isolated application home
+        run: cargo test --locked --manifest-path src-tauri/Cargo.toml --features test-hooks -- --test-threads=1
+
+      - name: Build NSIS and MSI installers
+        run: pnpm tauri build --target x86_64-pc-windows-msvc --bundles nsis,msi
+
+      - name: Validate binaries and smoke test MSI installation
+        run: ./scripts/windows-verify-installers.ps1 -Version '${{ steps.metadata.outputs.version }}'
+
+      - name: Upload MSI smoke diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows-smoke-logs-${{ github.run_id }}-${{ github.run_attempt }}
+          path: release/windows-logs/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload verified Windows release files
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ steps.metadata.outputs.artifact-name }}
+          path: release/windows/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+
+  publish:
+    name: Publish the verified cross-platform release
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - name: Check out release notes and existing Mac package
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            downloads
+            docs/release-notes
+            scripts
+
+      - name: Download verified Windows release files
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ needs.build.outputs.artifact-name }}
+          path: release/windows
+
+      - name: Verify checksums and publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ needs.build.outputs.version }}
+        run: ./scripts/windows-publish-release.ps1 -Version $env:RELEASE_VERSION

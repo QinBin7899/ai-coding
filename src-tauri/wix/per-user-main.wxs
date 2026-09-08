@@ -189,8 +189,8 @@
 						  Target="[System64Folder]msiexec.exe"
 						  Arguments="/x [ProductCode]" />
 
-                <RemoveFile Id="RemoveUserProgramsFiles" Directory="TauriLocalAppDataPrograms" Name="*" On="uninstall" />
-                <RemoveFolder Id="RemoveUserProgramsFolder" Directory="TauriLocalAppDataPrograms" On="uninstall" />
+                <!-- MSI removes its own files; leave the shared Programs folder
+                     and all user-created files/settings untouched. -->
 
 				<RemoveFolder Id="INSTALLDIR"
 							  On="uninstall" />

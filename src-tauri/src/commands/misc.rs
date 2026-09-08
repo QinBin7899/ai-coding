@@ -3305,37 +3305,11 @@ fn run_windows_tool_command_capture(
     extra_env: &[(&str, String)],
     working_dir: &Path,
 ) -> Result<std::process::Output, String> {
-    use std::process::{Command, Stdio};
+    use std::process::Stdio;
 
-    let mut cmd = if is_windows_command_script(tool_path) {
-        let path = tool_path.to_string_lossy();
-        let args = args
-            .iter()
-            .map(|arg| windows_cmd_double_quote_arg(arg))
-            .collect::<Vec<_>>()
-            .join(" ");
-        let command = format!(
-            "call {}{}",
-            win_quote_path_for_batch(&path),
-            if args.is_empty() {
-                String::new()
-            } else {
-                format!(" {args}")
-            }
-        );
-        let mut cmd = Command::new("cmd");
-        cmd.args(["/D", "/S", "/C"])
-            .raw_arg(&command)
-            .env("PATH", new_path)
-            .creation_flags(CREATE_NO_WINDOW);
-        cmd
-    } else {
-        let mut cmd = Command::new(tool_path);
-        cmd.args(args)
-            .env("PATH", new_path)
-            .creation_flags(CREATE_NO_WINDOW);
-        cmd
-    };
+    // Runtime execution must use the same canonical-path normalization as
+    // version probes: cmd.exe cannot call a batch file through a \\?\ prefix.
+    let mut cmd = build_windows_tool_command(tool_path, args, new_path);
 
     apply_extra_env(&mut cmd, extra_env);
     cmd.current_dir(working_dir)
@@ -6891,6 +6865,39 @@ mod tests {
         assert_eq!(
             decode_command_output(&output.stdout).trim(),
             "codex-cli 0.144.3"
+        );
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn captured_windows_tool_accepts_canonicalized_unicode_cmd_path() {
+        let temp = tempfile::tempdir().expect("temp dir should be created");
+        let directory = temp.path().join("中文 项目");
+        std::fs::create_dir(&directory).expect("Unicode directory should be created");
+        let tool = directory.join("codex.cmd");
+        std::fs::write(&tool, "@echo off\r\necho codex-cli 0.153.0\r\n")
+            .expect("cmd shim should be created");
+        let canonical = std::fs::canonicalize(&tool).expect("cmd shim should canonicalize");
+        let current_path = std::env::var("PATH").unwrap_or_default();
+
+        let output = run_windows_tool_command_capture(
+            &canonical,
+            &["--version"],
+            &current_path,
+            CommandDeadline::from_timeout(Some(std::time::Duration::from_secs(10))),
+            &[],
+            &directory,
+        )
+        .expect("captured canonicalized cmd shim should execute");
+
+        assert!(
+            output.status.success(),
+            "cmd shim failed: {}",
+            decode_command_output(&output.stderr)
+        );
+        assert_eq!(
+            decode_command_output(&output.stdout).trim(),
+            "codex-cli 0.153.0"
         );
     }
 

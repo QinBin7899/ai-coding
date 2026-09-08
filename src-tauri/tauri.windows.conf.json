@@ -5,11 +5,33 @@
       {
         "label": "main",
         "title": "AI Coding",
-        "titleBarStyle": "Visible",
-        "visible": false,
+        "width": 1000,
+        "height": 650,
         "minWidth": 900,
-        "minHeight": 600
+        "minHeight": 600,
+        "visible": false,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true
       }
     ]
+  },
+  "bundle": {
+    "windows": {
+      "allowDowngrades": false,
+      "webviewInstallMode": {
+        "type": "embedBootstrapper",
+        "silent": true
+      },
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": [
+          "SimpChinese",
+          "English"
+        ],
+        "displayLanguageSelector": true,
+        "startMenuFolder": "AI Coding"
+      }
+    }
   }
 }

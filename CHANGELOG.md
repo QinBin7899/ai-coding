@@ -1,5 +1,12 @@
 # Changelog
 
+## v3.22.1 - 2026-09-08
+
+- Added Windows x64 EXE (NSIS) and MSI release packaging, with per-user installation and Simplified Chinese/English EXE setup. Windows uses a native title bar and an embedded WebView2 bootstrapper.
+- Fixed captured Windows CLI commands launched through canonicalized paths containing spaces or Unicode. Corrected legacy HOME database discovery to preserve existing `ai-coding.db` data.
+- Restricted MSI uninstall cleanup to application-owned files, preserving unrelated files in the parent Programs directory.
+- Added Windows build, test, installer smoke-check and GitHub Release automation, with same-version Mac packages and SHA-256 checksums. See [release notes](docs/release-notes/v3.22.1.md).
+
 ## v3.22.0 - 2026-09-08
 
 - Fixed Session Manager search closing when its empty input loses focus: exact/fuzzy selection now remains open. Clear stale body-search hits immediately when the query or match mode changes. Search includes titles, summaries, directories, identifiers and full conversation contents, with progress/error reporting and no 200-session truncation.

@@ -213,26 +213,42 @@ pub fn get_app_config_dir() -> PathBuf {
     // 同时也避免新安装因为 `HOME` 被设置而写入非预期路径。
     #[cfg(windows)]
     {
-        let default_db = default_dir.join("zhongguoai.db");
-        if !default_db.exists() {
-            if let Ok(home_env) = std::env::var("HOME") {
-                let trimmed = home_env.trim();
-                if !trimmed.is_empty() {
-                    let legacy_dir = PathBuf::from(trimmed).join(".zhongguoai");
-                    if legacy_dir.join("zhongguoai.db").exists() {
-                        log::info!(
-                            "Detected v3.10.3 legacy database at {}, using it instead of {}",
-                            legacy_dir.display(),
-                            default_dir.display()
-                        );
-                        return legacy_dir;
-                    }
-                }
-            }
+        if let Some(legacy_dir) = windows_legacy_app_config_dir(
+            &default_dir,
+            std::env::var("HOME").ok().as_deref(),
+            std::env::var("CC_SWITCH_TEST_HOME").ok().as_deref(),
+        ) {
+            log::info!(
+                "Detected v3.10.3 legacy database at {}, using it instead of {}",
+                legacy_dir.display(),
+                default_dir.display()
+            );
+            return legacy_dir;
         }
     }
 
     default_dir
+}
+
+// Database::init uses ai-coding.db; choosing a directory based on an older
+// filename would open a new empty database instead of the existing accounts.
+#[cfg(windows)]
+fn windows_legacy_app_config_dir(
+    default_dir: &Path,
+    home_env: Option<&str>,
+    test_home: Option<&str>,
+) -> Option<PathBuf> {
+    if test_home.is_some_and(|home| !home.trim().is_empty())
+        || default_dir.join("ai-coding.db").is_file()
+    {
+        return None;
+    }
+    let legacy_home = home_env.map(str::trim).filter(|home| !home.is_empty())?;
+    let legacy_dir = PathBuf::from(legacy_home).join(".zhongguoai");
+    legacy_dir
+        .join("ai-coding.db")
+        .is_file()
+        .then_some(legacy_dir)
 }
 
 /// 获取应用配置文件路径
@@ -501,6 +517,60 @@ fn atomic_write_with_unix_mode(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_legacy_home_preserves_existing_database_and_test_isolation() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let default_dir = temp.path().join("默认目录").join(".zhongguoai");
+        let legacy_home = temp.path().join("旧用户 目录");
+        let legacy_dir = legacy_home.join(".zhongguoai");
+        std::fs::create_dir_all(&default_dir).expect("default dir");
+        std::fs::create_dir_all(&legacy_dir).expect("legacy dir");
+        std::fs::write(legacy_dir.join("ai-coding.db"), b"legacy accounts")
+            .expect("legacy database");
+        let legacy_home = legacy_home.to_str().expect("UTF-8 temp path");
+
+        assert_eq!(
+            windows_legacy_app_config_dir(&default_dir, Some(legacy_home), None),
+            Some(legacy_dir.clone())
+        );
+        assert!(windows_legacy_app_config_dir(
+            &default_dir,
+            Some(legacy_home),
+            Some("isolated-test-home")
+        )
+        .is_none());
+
+        std::fs::write(default_dir.join("ai-coding.db"), b"current accounts")
+            .expect("current database");
+        assert!(windows_legacy_app_config_dir(&default_dir, Some(legacy_home), None).is_none());
+        assert_eq!(
+            std::fs::read(default_dir.join("ai-coding.db")).unwrap(),
+            b"current accounts"
+        );
+        assert_eq!(
+            std::fs::read(legacy_dir.join("ai-coding.db")).unwrap(),
+            b"legacy accounts"
+        );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_legacy_home_ignores_unrelated_database_names() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let legacy_dir = temp.path().join(".zhongguoai");
+        std::fs::create_dir(&legacy_dir).expect("legacy dir");
+        std::fs::write(legacy_dir.join("zhongguoai.db"), b"other database")
+            .expect("other database");
+
+        assert!(windows_legacy_app_config_dir(
+            &temp.path().join("default"),
+            temp.path().to_str(),
+            None
+        )
+        .is_none());
+    }
 
     fn assert_atomic_write_replaces_existing_file(dir: &Path) {
         let path = dir.join("atomic-write-contract.json");
