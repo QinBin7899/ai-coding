@@ -57,22 +57,44 @@ $nsisVersion = Assert-PeVersion $nsisPath
 
 $installer = New-Object -ComObject WindowsInstaller.Installer
 $database = $installer.OpenDatabase($msiPath, 0)
+$msiPropertyDiagnostics = [Collections.Generic.List[object]]::new()
 function Get-MsiProperty([string]$Name) {
     $view = $database.OpenView("SELECT ``Value`` FROM ``Property`` WHERE ``Property`` = '$Name'")
-    $view.Execute()
-    $record = $view.Fetch()
-    if ($null -eq $record) { throw "MSI property missing: $Name" }
-    $value = $record.StringData(1)
-    $view.Close()
-    return $value
+    try {
+        # COM void methods can emit null pipeline entries. Suppress both so this
+        # function returns one string, never an array that changes -ne semantics.
+        [void]$view.Execute()
+        $record = $view.Fetch()
+        if ($null -eq $record) { throw "MSI property missing: $Name" }
+        $rawValue = $record.StringData(1)
+        [string]$value = $rawValue
+        $rawType = if ($null -eq $rawValue) { '<null>' } else { $rawValue.GetType().FullName }
+        [void]$msiPropertyDiagnostics.Add([ordered]@{
+            property = $Name
+            rawType = $rawType
+            returnedType = $value.GetType().FullName
+            length = $value.Length
+            value = $value
+        })
+        Write-Host "MSI $Name rawType=$rawType stringLength=$($value.Length) value=$($value | ConvertTo-Json -Compress)"
+        return [string]$value
+    }
+    finally { [void]$view.Close() }
 }
-$msiVersion = Get-MsiProperty 'ProductVersion'
-$msiProduct = Get-MsiProperty 'ProductName'
-$productCode = Get-MsiProperty 'ProductCode'
+[string]$msiVersion = Get-MsiProperty 'ProductVersion'
+[string]$msiProduct = Get-MsiProperty 'ProductName'
+[string]$productCode = Get-MsiProperty 'ProductCode'
 $summary = $database.SummaryInformation(0)
-$msiTemplate = $summary.Property(7)
+[string]$msiTemplate = $summary.Property(7)
+[ordered]@{
+    expectedVersion = $Version
+    expectedVersionType = $Version.GetType().FullName
+    expectedVersionLength = $Version.Length
+    properties = $msiPropertyDiagnostics.ToArray()
+    msiTemplate = $msiTemplate
+} | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $logs 'msi-properties.json') -Encoding utf8
 if ($msiVersion -ne $Version -or $msiProduct -ne 'AI Coding') {
-    throw "Unexpected MSI product/version: $msiProduct $msiVersion"
+    throw "Unexpected MSI product/version: name=$($msiProduct | ConvertTo-Json -Compress), version=$($msiVersion | ConvertTo-Json -Compress), expectedVersion=$Version"
 }
 if ($msiTemplate -notmatch '^x64;') { throw "MSI package is not x64: $msiTemplate" }
 if ($productCode -notmatch '^\{[0-9A-Fa-f-]{36}\}$') { throw 'Invalid MSI ProductCode' }
