@@ -106,6 +106,7 @@ jobs:
         run: pnpm build:renderer
 
       - name: Set up Rust with official rustup
+        id: rusttoolchain
         run: |
           $ErrorActionPreference = 'Stop'
           $PSNativeCommandUseErrorActionPreference = $true
@@ -113,21 +114,37 @@ jobs:
           rustup target add x86_64-pc-windows-msvc
           rustc --version
           cargo --version
+          $rustDetails = (rustc -vV | Out-String).Trim()
+          $rustHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($rustDetails))).ToLowerInvariant()
+          "rust-hash=$rustHash" >> $env:GITHUB_OUTPUT
+          "image-version=$env:ImageVersion" >> $env:GITHUB_OUTPUT
           $env:CC_SWITCH_TEST_HOME = Join-Path $env:RUNNER_TEMP 'ai-coding-rust-test-home'
           "CC_SWITCH_TEST_HOME=$env:CC_SWITCH_TEST_HOME" >> $env:GITHUB_ENV
           New-Item -ItemType Directory -Force $env:CC_SWITCH_TEST_HOME | Out-Null
+
+      - name: Restore compatible Windows Rust build cache
+        id: rusttargetcache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            src-tauri/target/
+            !src-tauri/target/**/bundle/**
+          key: windows-2022-x64-target-v1-${{ steps.rusttoolchain.outputs.image-version }}-${{ steps.rusttoolchain.outputs.rust-hash }}-${{ hashFiles('src-tauri/Cargo.lock') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: windows-2022-x64-target-v1-${{ steps.rusttoolchain.outputs.image-version }}-${{ steps.rusttoolchain.outputs.rust-hash }}-${{ hashFiles('src-tauri/Cargo.lock') }}-
 
       - name: Check Rust formatting
         run: cargo fmt --check --manifest-path src-tauri/Cargo.toml
 
       - name: Check Windows Rust targets
+        id: rustcheck
         run: cargo check --locked --manifest-path src-tauri/Cargo.toml --all-targets --features test-hooks
 
       - name: Lint Windows Rust targets
-        run: cargo clippy --locked --manifest-path src-tauri/Cargo.toml --all-targets --features test-hooks -- -D warnings
+        run: cargo clippy --locked --keep-going --manifest-path src-tauri/Cargo.toml --all-targets --features test-hooks -- -D warnings
 
       - name: Test Rust with an isolated application home
-        run: cargo test --locked --manifest-path src-tauri/Cargo.toml --features test-hooks -- --test-threads=1
+        if: ${{ !cancelled() && steps.rustcheck.outcome == 'success' }}
+        run: cargo test --locked --no-fail-fast --manifest-path src-tauri/Cargo.toml --features test-hooks -- --test-threads=1
 
       - name: Build NSIS and MSI installers
         run: pnpm tauri build --target x86_64-pc-windows-msvc --bundles 'nsis,msi'
@@ -152,6 +169,23 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           retention-days: 30
+
+      - name: Report Windows Rust cache size
+        if: ${{ !cancelled() && steps.rustcheck.outcome != 'skipped' && steps.rustcheck.outcome != '' }}
+        run: |
+          $files = @(Get-ChildItem src-tauri/target -File -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.FullName -notmatch '[\\/]bundle[\\/]' })
+          $bytes = ($files | Measure-Object -Property Length -Sum).Sum
+          Write-Host ('Rust target cache, excluding installers: {0:N2} GiB in {1} files' -f ($bytes / 1GB), $files.Count)
+
+      - name: Save Windows Rust build cache even after check failures
+        if: ${{ !cancelled() && steps.rustcheck.outcome != 'skipped' && steps.rustcheck.outcome != '' }}
+        continue-on-error: true
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            src-tauri/target/
+            !src-tauri/target/**/bundle/**
+          key: ${{ steps.rusttargetcache.outputs.cache-primary-key }}
 
   publish:
     name: Publish the verified cross-platform release

@@ -19,7 +19,7 @@ use support::{
 fn import_default_config_claude_persists_provider() {
     let _guard = test_mutex().lock().expect("acquire test mutex");
     reset_test_fs();
-    let home = ensure_test_home();
+    ensure_test_home();
 
     let settings_path = get_claude_settings_path();
     if let Some(parent) = settings_path.parent() {
@@ -287,7 +287,7 @@ fn import_default_config_without_live_file_returns_error() {
 fn import_mcp_from_claude_creates_config_and_enables_servers() {
     let _guard = test_mutex().lock().expect("acquire test mutex");
     reset_test_fs();
-    let home = ensure_test_home();
+    ensure_test_home();
 
     let mcp_path = get_claude_mcp_path();
     let claude_json = json!({
