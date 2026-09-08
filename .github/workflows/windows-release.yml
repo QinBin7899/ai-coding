@@ -130,7 +130,7 @@ jobs:
         run: cargo test --locked --manifest-path src-tauri/Cargo.toml --features test-hooks -- --test-threads=1
 
       - name: Build NSIS and MSI installers
-        run: pnpm tauri build --target x86_64-pc-windows-msvc --bundles nsis,msi
+        run: pnpm tauri build --target x86_64-pc-windows-msvc --bundles 'nsis,msi'
 
       - name: Validate binaries and smoke test MSI installation
         run: ./scripts/windows-verify-installers.ps1 -Version '${{ steps.metadata.outputs.version }}'

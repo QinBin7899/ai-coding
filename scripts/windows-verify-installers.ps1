@@ -84,13 +84,15 @@ $smokeRoot = Join-Path $env:RUNNER_TEMP "ai-coding-msi-smoke-$env:GITHUB_RUN_ID"
 $installParent = Join-Path $smokeRoot 'Programs'
 $installDir = Join-Path $installParent 'AI Coding'
 $testHome = Join-Path $smokeRoot 'application-data'
+$settingsDir = Join-Path $testHome '.zhongguoai'
 $sharedPrograms = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Programs'
-New-Item -ItemType Directory -Force $installParent, $testHome, $sharedPrograms | Out-Null
+New-Item -ItemType Directory -Force $installParent, $testHome, $settingsDir, $sharedPrograms | Out-Null
 $sentinelText = "AI Coding uninstall must preserve this unrelated file: $env:GITHUB_RUN_ID"
 $sentinels = @(
     (Join-Path $installParent 'unrelated-application-sentinel.txt'),
     (Join-Path $sharedPrograms "ai-coding-uninstall-sentinel-$env:GITHUB_RUN_ID.txt"),
-    (Join-Path $testHome 'user-data-sentinel.txt')
+    (Join-Path $testHome 'user-data-sentinel.txt'),
+    (Join-Path $settingsDir 'user-settings-sentinel.txt')
 )
 foreach ($sentinel in $sentinels) { Set-Content $sentinel $sentinelText -NoNewline }
 

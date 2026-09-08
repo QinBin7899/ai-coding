@@ -47,6 +47,10 @@ $headers = @{
     'X-GitHub-Api-Version' = '2022-11-28'
 }
 $apiBase = "$env:GITHUB_API_URL/repos/$env:GITHUB_REPOSITORY"
+$mainCommit = Invoke-RestMethod "$apiBase/commits/main" -Headers $headers
+if ($mainCommit.sha -ne $env:GITHUB_SHA) {
+    throw 'Main has advanced since this build started. Only the current main commit may publish a new release.'
+}
 $existingCommit = Invoke-RestMethod "$apiBase/commits/$tag" -Headers $headers -SkipHttpErrorCheck -StatusCodeVariable commitStatus
 if ($commitStatus -eq 200 -and $existingCommit.sha -ne $env:GITHUB_SHA) {
     throw "Tag $tag already refers to a different commit. Bump the package version instead of replacing a published release."
