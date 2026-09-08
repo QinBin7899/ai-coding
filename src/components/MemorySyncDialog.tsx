@@ -25,13 +25,12 @@ export function MemorySyncDialog({
   onOpenChange,
 }: MemorySyncDialogProps) {
   const { t } = useTranslation();
-  const [overview, setOverview] =
-    useState<Awaited<ReturnType<typeof promptsApi.getMemorySyncOverview>> | null>(
-      null,
-    );
-  const [selectedTargets, setSelectedTargets] = useState<Record<string, boolean>>(
-    {},
-  );
+  const [overview, setOverview] = useState<Awaited<
+    ReturnType<typeof promptsApi.getMemorySyncOverview>
+  > | null>(null);
+  const [selectedTargets, setSelectedTargets] = useState<
+    Record<string, boolean>
+  >({});
   const [isLoading, setIsLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
 

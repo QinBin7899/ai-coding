@@ -33,19 +33,25 @@ vi.mock("@/components/JsonEditor", () => ({
   default: ({
     value,
     onChange,
+    ariaLabel,
   }: {
     value: string;
     onChange: (value: string) => void;
+    ariaLabel?: string;
   }) => (
     <textarea
-      aria-label="settings-json-editor"
+      aria-label={ariaLabel}
       value={value}
       onChange={(event) => onChange(event.target.value)}
     />
   ),
 }));
 
-function renderEditor(value: string, onChange = vi.fn()) {
+function renderEditor(
+  value: string,
+  onChange = vi.fn(),
+  isModalOpen = false,
+) {
   render(
     <CommonConfigEditor
       value={value}
@@ -56,7 +62,7 @@ function renderEditor(value: string, onChange = vi.fn()) {
       onCommonConfigSnippetChange={() => {}}
       commonConfigError=""
       onEditClick={() => {}}
-      isModalOpen={false}
+      isModalOpen={isModalOpen}
       onModalClose={() => {}}
     />,
   );
@@ -65,6 +71,21 @@ function renderEditor(value: string, onChange = vi.fn()) {
 
 const effortCheckbox = () =>
   screen.getByRole("checkbox", { name: "claudeConfig.effortMax" });
+
+describe("CommonConfigEditor accessibility", () => {
+  it("names both JSON editors", () => {
+    renderEditor("{}", vi.fn(), true);
+
+    expect(
+      screen.getByRole("textbox", { name: "provider.configJson" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", {
+        name: "claudeConfig.editCommonConfigTitle",
+      }),
+    ).toBeInTheDocument();
+  });
+});
 
 describe("CommonConfigEditor max effort toggle", () => {
   it("does not treat legacy top-level effortLevel=max as checked", () => {

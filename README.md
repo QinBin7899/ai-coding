@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>A desktop control center for AI coding tools, model providers, routing, memory, sessions, MCP, Skills, and prompts.</strong><br />
-  Switch freely between Chinese domestic model providers and overseas model providers across Claude Code, Claude Desktop, Codex, Gemini CLI, OpenCode, OpenClaw, Hermes, and bincode.
+  Switch freely between Chinese domestic model providers and overseas model providers across Claude Code, Claude Desktop, Codex, Gemini CLI, OpenCode, OpenClaw, Hermes, Grok Build, Pi, and bincode.
 </p>
 
 AI Coding is not another chat wrapper. It is a practical desktop toolkit for developers who use multiple AI coding CLIs and want one clean place to manage providers, API keys, model routes, local proxy settings, MCP servers, Skills, prompts, session history, shared memory, and usage analytics.
@@ -30,7 +30,7 @@ If you often switch between DeepSeek, Kimi, Zhipu GLM, Qwen/Bailian, SiliconFlow
 ## Highlights
 
 - **Chinese and overseas model switching**: providers are organized into Domestic Models, Custom Configuration, and Overseas Models, so users can quickly choose the right route for each AI coding tool.
-- **8 supported AI coding apps**: Claude Code, Claude Desktop, Codex, Gemini CLI, OpenCode, OpenClaw, Hermes, and bincode. bincode is integrated as an OpenCode-compatible app with its own branding and switch entry.
+- **10 supported AI coding apps**: Claude Code, Claude Desktop, Codex, Gemini CLI, OpenCode, OpenClaw, Hermes, Grok Build, Pi, and bincode. bincode is integrated as an OpenCode-compatible app with its own branding and switch entry.
 - **Cross-tool memory synchronization**: push Claude Code memory from `~/.claude/CLAUDE.md` to Codex, Gemini, Hermes, OpenCode, and OpenClaw with one click.
 - **Session management and Markdown export**: browse local AI coding sessions, search history, copy resume commands, delete sessions, and export the current session as a `.md` file for archiving or sharing.
 - **Apple-inspired desktop UI**: dark mode by default, warm Claude-style orange accents, large rounded corners, glass effects, and a macOS Dock-style bottom navigation with hover magnification and app labels.
@@ -52,6 +52,8 @@ If you often switch between DeepSeek, Kimi, Zhipu GLM, Qwen/Bailian, SiliconFlow
 | OpenCode | OpenCode-compatible providers, MCP, Skills, memory target |
 | OpenClaw | Providers, tools, default agents, memory target |
 | Hermes | Hermes memory, Skills, MCP, and provider-related config |
+| Grok Build | xAI provider configuration, OAuth and sessions (hidden by default) |
+| Pi | Providers, prompts, sessions and usage (hidden by default) |
 | bincode | OpenCode-compatible app entry and model switching |
 
 ## Why It Exists
@@ -74,7 +76,7 @@ This repository is prepared as an open-source build for self-hosting, learning, 
 
 Download the current Apple Silicon build:
 
-[Download AI Coding v3.17.1 for macOS Apple Silicon](downloads/AI-Coding-v3.17.1-macOS-aarch64.dmg)
+[Download AI Coding v3.22.0 for macOS Apple Silicon](downloads/AI-Coding-v3.22.0-macOS-aarch64.dmg)
 
 Open the `.dmg` file, then drag **AI Coding** into the Applications folder.
 

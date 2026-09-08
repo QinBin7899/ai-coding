@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSessionSearch } from "@/hooks/useSessionSearch";
+import { useSessionContentSearch } from "@/hooks/useSessionContentSearch";
+import { useSessionLiveSync } from "@/hooks/useSessionLiveSync";
 import { useSessionOrganizer } from "@/hooks/useSessionOrganizer";
 import { useTranslation } from "react-i18next";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  AlertTriangle,
   Archive,
   Copy,
   Download,
@@ -17,19 +20,27 @@ import {
   MessageSquare,
   Clock,
   FolderOpen,
+  FileText,
   X,
   CheckSquare,
+  ListTree,
+  List,
+  ChevronDown,
+  ChevronRight,
+  ChevronsDownUp,
 } from "lucide-react";
 import {
+  piKeys,
   useDeleteSessionMutation,
   useSessionMessagesQuery,
   useSessionsQuery,
 } from "@/lib/query";
-import { sessionsApi, settingsApi } from "@/lib/api";
-import type { SessionMeta } from "@/types";
+import { piApi, sessionsApi, settingsApi } from "@/lib/api";
+import type { SessionMeta, SessionSearchMode } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -38,6 +49,11 @@ import {
 } from "@/components/ui/select";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import {
   Tooltip,
@@ -60,18 +76,154 @@ import {
   getBaseName,
   getProviderIconName,
   getProviderLabel,
+  getSessionDirectoryGroupKey,
   getSessionKey,
+  groupSessionsByProviderAndDirectory,
+  type SessionDirectoryGroup,
+  type SessionProviderGroup,
   shouldHideCodexMessageFromToc,
 } from "./utils";
 
+const SESSION_LIST_VIEW_MODE_STORAGE_KEY =
+  "ai-coding.sessionManager.listViewMode";
+const SESSION_SEARCH_MODE_STORAGE_KEY = "ai-coding.sessionManager.searchMode";
+const SESSION_GROUP_EXPANSION_STORAGE_KEY =
+  "ai-coding.sessionManager.groupExpansionState";
+
 type ProviderFilter =
-  "all" | "codex" | "claude" | "opencode" | "openclaw" | "gemini" | "hermes";
+  | "all"
+  | "codex"
+  | "grokbuild"
+  | "claude"
+  | "opencode"
+  | "openclaw"
+  | "gemini"
+  | "hermes"
+  | "pi";
+
+type SessionListViewMode = "flat" | "grouped";
+
+type GroupSelectionState = {
+  checked: boolean | "indeterminate";
+  isSelected: boolean;
+  selectedCount: number;
+  selectableCount: number;
+};
+
+type SessionGroupExpansionState = {
+  expandedProviderIds: Set<string>;
+  expandedDirectoryKeys: Set<string>;
+};
+
+const readInitialSessionListViewMode = (): SessionListViewMode => {
+  if (typeof window === "undefined") return "flat";
+  try {
+    const stored = window.localStorage.getItem(
+      SESSION_LIST_VIEW_MODE_STORAGE_KEY,
+    );
+    return stored === "grouped" || stored === "flat" ? stored : "flat";
+  } catch {
+    return "flat";
+  }
+};
+
+const readInitialSessionSearchMode = (): SessionSearchMode => {
+  if (typeof window === "undefined") return "fuzzy";
+  try {
+    return window.localStorage.getItem(SESSION_SEARCH_MODE_STORAGE_KEY) ===
+      "exact"
+      ? "exact"
+      : "fuzzy";
+  } catch {
+    return "fuzzy";
+  }
+};
+
+const readInitialSessionGroupExpansionState =
+  (): SessionGroupExpansionState => {
+    if (typeof window === "undefined") {
+      return {
+        expandedProviderIds: new Set(),
+        expandedDirectoryKeys: new Set(),
+      };
+    }
+
+    try {
+      const stored = window.localStorage.getItem(
+        SESSION_GROUP_EXPANSION_STORAGE_KEY,
+      );
+      const parsed = stored ? JSON.parse(stored) : null;
+
+      if (!parsed || typeof parsed !== "object") {
+        return {
+          expandedProviderIds: new Set(),
+          expandedDirectoryKeys: new Set(),
+        };
+      }
+
+      const expandedProviderIds = Array.isArray(parsed.expandedProviderIds)
+        ? parsed.expandedProviderIds.filter(
+            (providerId: unknown): providerId is string =>
+              typeof providerId === "string",
+          )
+        : [];
+      const expandedDirectoryKeys = Array.isArray(parsed.expandedDirectoryKeys)
+        ? parsed.expandedDirectoryKeys.filter(
+            (directoryKey: unknown): directoryKey is string =>
+              typeof directoryKey === "string",
+          )
+        : [];
+
+      return {
+        expandedProviderIds: new Set(expandedProviderIds),
+        expandedDirectoryKeys: new Set(expandedDirectoryKeys),
+      };
+    } catch {
+      return {
+        expandedProviderIds: new Set(),
+        expandedDirectoryKeys: new Set(),
+      };
+    }
+  };
+
+const serializeSessionGroupExpansionState = (
+  expandedProviderGroups: Set<string>,
+  expandedDirectoryGroups: Set<string>,
+) =>
+  JSON.stringify({
+    expandedProviderIds: Array.from(expandedProviderGroups).sort(),
+    expandedDirectoryKeys: Array.from(expandedDirectoryGroups).sort(),
+  });
+
+const filterSetToAllowedValues = (
+  current: Set<string>,
+  allowedValues: Set<string>,
+) => {
+  let changed = false;
+  const next = new Set<string>();
+
+  current.forEach((value) => {
+    if (allowedValues.has(value)) {
+      next.add(value);
+    } else {
+      changed = true;
+    }
+  });
+
+  return changed ? next : current;
+};
 
 export function SessionManagerPage({ appId }: { appId: string }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { data, isLoading, refetch } = useSessionsQuery();
   const sessions = data ?? [];
+  const piSessionDiscovery = useQuery({
+    queryKey: piKeys.sessionDiscovery,
+    queryFn: () => piApi.getSessionDiscovery(),
+    enabled: appId === "pi",
+    staleTime: 30 * 1000,
+  });
   const detailRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const [activeMessageIndex, setActiveMessageIndex] = useState<number | null>(
@@ -90,11 +242,30 @@ export function SessionManagerPage({ appId }: { appId: string }) {
   const searchInputRef = useRef<HTMLInputElement | null>(null);
 
   const [search, setSearch] = useState("");
+  const [searchMode, setSearchMode] = useState<SessionSearchMode>(
+    readInitialSessionSearchMode,
+  );
   const [providerFilter, setProviderFilter] = useState<ProviderFilter>(
     appId as ProviderFilter,
   );
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [listTab, setListTab] = useState<"sessions" | "archived">("sessions");
+  const [listViewMode, setListViewMode] = useState<SessionListViewMode>(
+    readInitialSessionListViewMode,
+  );
+  const [initialGroupExpansionState] = useState(
+    readInitialSessionGroupExpansionState,
+  );
+  const [expandedProviderGroups, setExpandedProviderGroups] = useState<
+    Set<string>
+  >(() => initialGroupExpansionState.expandedProviderIds);
+  const [expandedDirectoryGroups, setExpandedDirectoryGroups] = useState<
+    Set<string>
+  >(() => initialGroupExpansionState.expandedDirectoryKeys);
+
+  useEffect(() => {
+    setProviderFilter(appId as ProviderFilter);
+  }, [appId]);
   const {
     pinnedKeys,
     archivedKeys,
@@ -104,15 +275,52 @@ export function SessionManagerPage({ appId }: { appId: string }) {
     pruneMissing,
   } = useSessionOrganizer();
 
-  // 使用 FlexSearch 全文搜索
+  // 元数据搜索（标题 / 摘要 / 目录 / 会话来源等）
   const { search: searchSessions } = useSessionSearch({
     sessions,
     providerFilter,
+    mode: searchMode,
+  });
+
+  // 正文全文检索：元数据搜不到的聊天内容由后端按需解析并缓存
+  const providerScopedSessions = useMemo(
+    () =>
+      providerFilter === "all"
+        ? sessions
+        : sessions.filter((session) => session.providerId === providerFilter),
+    [sessions, providerFilter],
+  );
+  const {
+    hits: contentHits,
+    isSearching: isSearchingContent,
+    error: contentSearchError,
+  } = useSessionContentSearch({
+    sessions: providerScopedSessions,
+    query: search,
+    mode: searchMode,
   });
 
   const filteredSessions = useMemo(() => {
-    return searchSessions(search);
-  }, [searchSessions, search]);
+    const base = searchSessions(search);
+    if (!search.trim() || contentHits.size === 0) return base;
+    const seen = new Set(base.map((session) => getSessionKey(session)));
+    const extra = providerScopedSessions
+      .filter((session) => {
+        const key = getSessionKey(session);
+        return contentHits.has(key) && !seen.has(key);
+      })
+      .sort((a, b) => {
+        const aHit = contentHits.get(getSessionKey(a));
+        const bHit = contentHits.get(getSessionKey(b));
+        const aScore = aHit?.score ?? aHit?.matchCount ?? 0;
+        const bScore = bHit?.score ?? bHit?.matchCount ?? 0;
+        if (bScore !== aScore) return bScore - aScore;
+        const aTs = a.lastActiveAt ?? a.createdAt ?? 0;
+        const bTs = b.lastActiveAt ?? b.createdAt ?? 0;
+        return bTs - aTs;
+      });
+    return [...base, ...extra];
+  }, [searchSessions, search, contentHits, providerScopedSessions]);
 
   // 按归档状态拆分当前列表，并把置顶会话排到最前
   const visibleSessions = useMemo(() => {
@@ -152,6 +360,74 @@ export function SessionManagerPage({ appId }: { appId: string }) {
   );
   const activeCount = filteredSessions.length - archivedCount;
 
+  // 分类视图：按供应商 / 项目目录分组（基于当前 tab 已过滤出的会话）
+  const groupedSessions = useMemo(
+    () =>
+      groupSessionsByProviderAndDirectory(
+        visibleSessions,
+        t("sessionManager.unknownDirectory", {
+          defaultValue: "未知目录",
+        }),
+      ),
+    [visibleSessions, t],
+  );
+
+  const validGroupExpansionKeys = useMemo(
+    () => ({
+      providerIds: new Set(sessions.map((session) => session.providerId)),
+      directoryKeys: new Set(
+        sessions.map((session) =>
+          getSessionDirectoryGroupKey(session.providerId, session.projectDir),
+        ),
+      ),
+    }),
+    [sessions],
+  );
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        SESSION_LIST_VIEW_MODE_STORAGE_KEY,
+        listViewMode,
+      );
+    } catch {
+      // localStorage 不可用时静默降级为仅内存状态
+    }
+  }, [listViewMode]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(SESSION_SEARCH_MODE_STORAGE_KEY, searchMode);
+    } catch {
+      // localStorage 不可用时静默降级为仅内存状态
+    }
+  }, [searchMode]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        SESSION_GROUP_EXPANSION_STORAGE_KEY,
+        serializeSessionGroupExpansionState(
+          expandedProviderGroups,
+          expandedDirectoryGroups,
+        ),
+      );
+    } catch {
+      // localStorage 不可用时静默降级为仅内存状态
+    }
+  }, [expandedDirectoryGroups, expandedProviderGroups]);
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    setExpandedProviderGroups((current) =>
+      filterSetToAllowedValues(current, validGroupExpansionKeys.providerIds),
+    );
+    setExpandedDirectoryGroups((current) =>
+      filterSetToAllowedValues(current, validGroupExpansionKeys.directoryKeys),
+    );
+  }, [isLoading, validGroupExpansionKeys]);
+
   useEffect(() => {
     if (visibleSessions.length === 0) {
       setSelectedKey(null);
@@ -176,11 +452,40 @@ export function SessionManagerPage({ appId }: { appId: string }) {
     );
   }, [visibleSessions, selectedKey]);
 
+  const listViewModeLabel =
+    listViewMode === "grouped"
+      ? t("sessionManager.viewModeGrouped", {
+          defaultValue: "分类",
+        })
+      : t("sessionManager.viewModeFlat", {
+          defaultValue: "列表",
+        });
+
   const { data: messages = [], isLoading: isLoadingMessages } =
     useSessionMessagesQuery(
       selectedSession?.providerId,
       selectedSession?.sourcePath,
     );
+
+  // 终端里新产生的消息实时同步到当前页面（文件监听事件 + 3 秒 stat 兜底）
+  useSessionLiveSync({
+    providerId: selectedSession?.providerId,
+    sourcePath: selectedSession?.sourcePath,
+  });
+
+  // 手动刷新：同时刷新列表与当前会话的消息（原来只刷新列表）
+  const handleRefresh = useCallback(() => {
+    void refetch();
+    if (selectedSession?.providerId && selectedSession.sourcePath) {
+      void queryClient.invalidateQueries({
+        queryKey: [
+          "sessionMessages",
+          selectedSession.providerId,
+          selectedSession.sourcePath,
+        ],
+      });
+    }
+  }, [refetch, queryClient, selectedSession]);
   const deleteSessionMutation = useDeleteSessionMutation();
   const isDeleting = deleteSessionMutation.isPending || isBatchDeleting;
 
@@ -550,6 +855,28 @@ export function SessionManagerPage({ appId }: { appId: string }) {
       selectedSessionKeys.has(getSessionKey(session)),
     );
 
+  const getGroupSelectionState = (
+    groupSessions: SessionMeta[],
+  ): GroupSelectionState => {
+    const selectableSessions = groupSessions.filter((session) =>
+      Boolean(session.sourcePath),
+    );
+    const selectedCount = selectableSessions.filter((session) =>
+      selectedSessionKeys.has(getSessionKey(session)),
+    ).length;
+    const isSelected =
+      selectableSessions.length > 0 &&
+      selectedCount === selectableSessions.length;
+
+    return {
+      checked:
+        selectedCount === 0 ? false : isSelected ? true : "indeterminate",
+      isSelected,
+      selectedCount,
+      selectableCount: selectableSessions.length,
+    };
+  };
+
   const toggleSessionChecked = (session: SessionMeta, checked: boolean) => {
     if (!session.sourcePath) return;
     const key = getSessionKey(session);
@@ -562,6 +889,145 @@ export function SessionManagerPage({ appId }: { appId: string }) {
       }
       return next;
     });
+  };
+
+  const toggleSessionGroupChecked = (
+    groupSessions: SessionMeta[],
+    checked: boolean,
+  ) => {
+    const selectableSessions = groupSessions.filter((session) =>
+      Boolean(session.sourcePath),
+    );
+    if (selectableSessions.length === 0) return;
+
+    setSelectedSessionKeys((current) => {
+      const next = new Set(current);
+      selectableSessions.forEach((session) => {
+        const sessionKey = getSessionKey(session);
+        if (checked) {
+          next.add(sessionKey);
+        } else {
+          next.delete(sessionKey);
+        }
+      });
+      return next;
+    });
+  };
+
+  const toggleProviderGroup = (providerId: string) => {
+    setExpandedProviderGroups((current) => {
+      const next = new Set(current);
+      if (next.has(providerId)) {
+        next.delete(providerId);
+      } else {
+        next.add(providerId);
+      }
+      return next;
+    });
+  };
+
+  const toggleDirectoryGroup = (directoryKey: string) => {
+    setExpandedDirectoryGroups((current) => {
+      const next = new Set(current);
+      if (next.has(directoryKey)) {
+        next.delete(directoryKey);
+      } else {
+        next.add(directoryKey);
+      }
+      return next;
+    });
+  };
+
+  const handleCollapseAllGroups = () => {
+    setExpandedProviderGroups(new Set());
+    setExpandedDirectoryGroups(new Set());
+  };
+
+  const renderSessionItem = (session: SessionMeta) => {
+    const sessionKey = getSessionKey(session);
+    const isSelected = selectedKey !== null && sessionKey === selectedKey;
+
+    return (
+      <SessionItem
+        key={sessionKey}
+        session={session}
+        isSelected={isSelected}
+        selectionMode={selectionMode}
+        searchQuery={search}
+        matchSnippet={contentHits.get(sessionKey)?.snippet}
+        isChecked={selectedSessionKeys.has(sessionKey)}
+        isCheckDisabled={!session.sourcePath}
+        isPinned={pinnedKeys.has(sessionKey)}
+        isArchived={archivedKeys.has(sessionKey)}
+        onSelect={setSelectedKey}
+        onToggleChecked={(checked) => toggleSessionChecked(session, checked)}
+        onTogglePin={() => handleTogglePin(session)}
+        onToggleArchive={() => handleToggleArchive(session)}
+      />
+    );
+  };
+
+  const renderGroupSelectionBadge = (
+    selectionState: GroupSelectionState,
+    totalCount: number,
+    variant: "secondary" | "outline",
+  ) => (
+    <Badge variant={variant} className="shrink-0 text-xs">
+      {selectionMode
+        ? `${selectionState.selectedCount}/${selectionState.selectableCount}`
+        : totalCount}
+    </Badge>
+  );
+
+  const renderProviderGroupCheckbox = (
+    providerGroup: SessionProviderGroup,
+    providerLabel: string,
+    selectionState: GroupSelectionState,
+  ) => {
+    if (!selectionMode) return null;
+
+    return (
+      <Checkbox
+        checked={selectionState.checked}
+        disabled={selectionState.selectableCount === 0}
+        aria-label={t("sessionManager.selectProviderGroupForBatch", {
+          defaultValue: "选择 {{provider}} 供应商分组内会话",
+          provider: providerLabel,
+        })}
+        onClick={(event) => event.stopPropagation()}
+        onCheckedChange={() =>
+          toggleSessionGroupChecked(
+            providerGroup.sessions,
+            !selectionState.isSelected,
+          )
+        }
+      />
+    );
+  };
+
+  const renderDirectoryGroupCheckbox = (
+    directoryGroup: SessionDirectoryGroup,
+    selectionState: GroupSelectionState,
+  ) => {
+    if (!selectionMode) return null;
+
+    return (
+      <Checkbox
+        checked={selectionState.checked}
+        disabled={selectionState.selectableCount === 0}
+        aria-label={t("sessionManager.selectDirectoryGroupForBatch", {
+          defaultValue: "选择 {{directory}} 目录分组内会话",
+          directory: directoryGroup.label,
+        })}
+        onClick={(event) => event.stopPropagation()}
+        onCheckedChange={() =>
+          toggleSessionGroupChecked(
+            directoryGroup.sessions,
+            !selectionState.isSelected,
+          )
+        }
+      />
+    );
   };
 
   const handleToggleSelectAll = () => {
@@ -597,71 +1063,165 @@ export function SessionManagerPage({ appId }: { appId: string }) {
         onWheel={(e) => e.stopPropagation()}
       >
         <div className="flex-1 overflow-hidden flex flex-col gap-4">
+          {appId === "pi" &&
+            piSessionDiscovery.data?.status === "requires_project_context" && (
+              <div
+                role="status"
+                className="flex shrink-0 items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200"
+              >
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>
+                  {t("sessionManager.piRelativeSessionDir")}{" "}
+                  <code>{piSessionDiscovery.data.configuredPath}</code>
+                </span>
+              </div>
+            )}
+          {appId === "pi" &&
+            (piSessionDiscovery.data?.status === "unavailable" ||
+              piSessionDiscovery.isError) && (
+              <div
+                role="alert"
+                className="flex shrink-0 items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-800 dark:text-red-200"
+              >
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>
+                  {t("sessionManager.piDiscoveryUnavailable", {
+                    error:
+                      piSessionDiscovery.data?.status === "unavailable"
+                        ? piSessionDiscovery.data.reason
+                        : extractErrorMessage(piSessionDiscovery.error),
+                  })}
+                </span>
+              </div>
+            )}
           {/* 主内容区域 - 左右分栏 */}
           <div className="flex-1 overflow-hidden grid gap-4 md:grid-cols-[320px_1fr]">
             {/* 左侧会话列表 */}
             <Card className="flex flex-col flex-1 min-h-0 overflow-hidden">
               <CardHeader className="py-2 px-3 border-b">
                 {isSearchOpen ? (
-                  <div className="flex items-center gap-2">
-                    <div className="relative flex-1">
-                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-                      <Input
-                        ref={searchInputRef}
-                        value={search}
-                        onChange={(event) => setSearch(event.target.value)}
-                        placeholder={t("sessionManager.searchPlaceholder")}
-                        className="h-8 pl-8 pr-8 text-sm"
-                        autoFocus
-                        onKeyDown={(e) => {
-                          if (e.key === "Escape") {
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+                        <Input
+                          ref={searchInputRef}
+                          value={search}
+                          onChange={(event) => setSearch(event.target.value)}
+                          placeholder={t("sessionManager.searchPlaceholder")}
+                          className="h-8 pl-8 pr-8 text-sm"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === "Escape") {
+                              setIsSearchOpen(false);
+                              setSearch("");
+                            }
+                          }}
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-1 top-1/2 -translate-y-1/2 size-6"
+                          aria-label={t("sessionManager.closeSearch", {
+                            defaultValue: "关闭搜索",
+                          })}
+                          onClick={() => {
                             setIsSearchOpen(false);
                             setSearch("");
-                          }
-                        }}
-                        onBlur={() => {
-                          if (search.trim() === "") {
-                            setIsSearchOpen(false);
-                          }
-                        }}
-                      />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-1 top-1/2 -translate-y-1/2 size-6"
-                        onClick={() => {
-                          setIsSearchOpen(false);
-                          setSearch("");
-                        }}
+                          }}
+                        >
+                          <X className="size-3" />
+                        </Button>
+                      </div>
+                      <Select
+                        value={searchMode}
+                        onValueChange={(value) =>
+                          setSearchMode(value as SessionSearchMode)
+                        }
                       >
-                        <X className="size-3" />
-                      </Button>
-                    </div>
-                    {selectionMode && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="secondary"
-                            size="icon"
-                            className="size-7 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-950/60"
-                            aria-label={t(
-                              "sessionManager.exitBatchModeTooltip",
-                              {
-                                defaultValue: "退出批量管理",
-                              },
-                            )}
-                            onClick={exitSelectionMode}
-                          >
-                            <CheckSquare className="size-3.5" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {t("sessionManager.exitBatchModeTooltip", {
-                            defaultValue: "退出批量管理",
+                        <SelectTrigger
+                          className="h-8 w-[76px] shrink-0 px-2 text-xs"
+                          aria-label={t("sessionManager.searchMode", {
+                            defaultValue: "匹配方式",
                           })}
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
+                        >
+                          <span className="truncate">
+                            {searchMode === "exact"
+                              ? t("sessionManager.searchModeExact", {
+                                  defaultValue: "精准",
+                                })
+                              : t("sessionManager.searchModeFuzzy", {
+                                  defaultValue: "模糊",
+                                })}
+                          </span>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="fuzzy">
+                            {t("sessionManager.searchModeFuzzy", {
+                              defaultValue: "模糊匹配",
+                            })}
+                          </SelectItem>
+                          <SelectItem value="exact">
+                            {t("sessionManager.searchModeExact", {
+                              defaultValue: "精准匹配",
+                            })}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {selectionMode && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="secondary"
+                              size="icon"
+                              className="size-7 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:bg-blue-950/60"
+                              aria-label={t(
+                                "sessionManager.exitBatchModeTooltip",
+                                {
+                                  defaultValue: "退出批量管理",
+                                },
+                              )}
+                              onClick={exitSelectionMode}
+                            >
+                              <CheckSquare className="size-3.5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {t("sessionManager.exitBatchModeTooltip", {
+                              defaultValue: "退出批量管理",
+                            })}
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
+                    {search.trim() &&
+                      (isSearchingContent || contentSearchError) && (
+                        <div
+                          role={contentSearchError ? "alert" : "status"}
+                          className={cn(
+                            "flex items-center gap-1.5 px-1 text-[11px]",
+                            contentSearchError
+                              ? "text-destructive"
+                              : "text-muted-foreground",
+                          )}
+                        >
+                          {contentSearchError ? (
+                            <AlertTriangle className="size-3 shrink-0" />
+                          ) : (
+                            <RefreshCw className="size-3 shrink-0 animate-spin" />
+                          )}
+                          <span className="truncate">
+                            {contentSearchError
+                              ? t("sessionManager.contentSearchFailed", {
+                                  defaultValue: "聊天正文搜索失败：{{error}}",
+                                  error: contentSearchError,
+                                })
+                              : t("sessionManager.searchingContent", {
+                                  defaultValue: "正在搜索完整聊天记录…",
+                                })}
+                          </span>
+                        </div>
+                      )}
                   </div>
                 ) : (
                   <div className="flex flex-col gap-2">
@@ -724,6 +1284,9 @@ export function SessionManagerPage({ appId }: { appId: string }) {
                               variant="ghost"
                               size="icon"
                               className="size-7"
+                              aria-label={t("sessionManager.searchSessions", {
+                                defaultValue: "搜索会话",
+                              })}
                               onClick={() => {
                                 setIsSearchOpen(true);
                                 setTimeout(
@@ -739,6 +1302,85 @@ export function SessionManagerPage({ appId }: { appId: string }) {
                             {t("sessionManager.searchSessions")}
                           </TooltipContent>
                         </Tooltip>
+                        <Select
+                          value={listViewMode}
+                          onValueChange={(value) =>
+                            setListViewMode(value as SessionListViewMode)
+                          }
+                        >
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <SelectTrigger
+                                className="size-7 p-0 justify-center border-0 bg-transparent hover:bg-muted"
+                                aria-label={t(
+                                  "sessionManager.viewModeTooltip",
+                                  {
+                                    defaultValue: "查看方式",
+                                  },
+                                )}
+                              >
+                                <span className="sr-only">
+                                  {t("sessionManager.viewModeTooltip", {
+                                    defaultValue: "查看方式",
+                                  })}
+                                </span>
+                                {listViewMode === "grouped" ? (
+                                  <ListTree className="size-3.5" />
+                                ) : (
+                                  <List className="size-3.5" />
+                                )}
+                              </SelectTrigger>
+                            </TooltipTrigger>
+                            <TooltipContent>{listViewModeLabel}</TooltipContent>
+                          </Tooltip>
+                          <SelectContent className="w-40">
+                            <SelectItem value="flat">
+                              <div className="flex items-center gap-2">
+                                <List className="size-3.5" />
+                                <span>
+                                  {t("sessionManager.viewModeFlat", {
+                                    defaultValue: "列表",
+                                  })}
+                                </span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="grouped">
+                              <div className="flex items-center gap-2">
+                                <ListTree className="size-3.5" />
+                                <span>
+                                  {t("sessionManager.viewModeGrouped", {
+                                    defaultValue: "分类",
+                                  })}
+                                </span>
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {listViewMode === "grouped" && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-7"
+                                aria-label={t(
+                                  "sessionManager.collapseAllGroups",
+                                  {
+                                    defaultValue: "全部收起",
+                                  },
+                                )}
+                                onClick={handleCollapseAllGroups}
+                              >
+                                <ChevronsDownUp className="size-3.5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {t("sessionManager.collapseAllGroups", {
+                                defaultValue: "全部收起",
+                              })}
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
 
                         <Select
                           value={providerFilter}
@@ -748,7 +1390,20 @@ export function SessionManagerPage({ appId }: { appId: string }) {
                         >
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <SelectTrigger className="size-7 p-0 justify-center border-0 bg-transparent hover:bg-muted">
+                              <SelectTrigger
+                                className="size-7 p-0 justify-center border-0 bg-transparent hover:bg-muted"
+                                aria-label={t(
+                                  "sessionManager.providerFilterTooltip",
+                                  {
+                                    defaultValue: "供应商筛选",
+                                  },
+                                )}
+                              >
+                                <span className="sr-only">
+                                  {t("sessionManager.providerFilterTooltip", {
+                                    defaultValue: "供应商筛选",
+                                  })}
+                                </span>
                                 <ProviderIcon
                                   icon={
                                     providerFilter === "all"
@@ -787,6 +1442,16 @@ export function SessionManagerPage({ appId }: { appId: string }) {
                                   size={14}
                                 />
                                 <span>Codex</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="grokbuild">
+                              <div className="flex items-center gap-2">
+                                <ProviderIcon
+                                  icon="grok"
+                                  name="grokbuild"
+                                  size={14}
+                                />
+                                <span>Grok Build</span>
                               </div>
                             </SelectItem>
                             <SelectItem value="claude">
@@ -829,6 +1494,12 @@ export function SessionManagerPage({ appId }: { appId: string }) {
                                 <span>Gemini CLI</span>
                               </div>
                             </SelectItem>
+                            <SelectItem value="pi">
+                              <div className="flex items-center gap-2">
+                                <ProviderIcon icon="pi" name="pi" size={14} />
+                                <span>Pi</span>
+                              </div>
+                            </SelectItem>
                           </SelectContent>
                         </Select>
 
@@ -838,12 +1509,16 @@ export function SessionManagerPage({ appId }: { appId: string }) {
                               variant="ghost"
                               size="icon"
                               className="size-7"
-                              onClick={() => void refetch()}
+                              onClick={handleRefresh}
                             >
                               <RefreshCw className="size-3.5" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>{t("common.refresh")}</TooltipContent>
+                          <TooltipContent>
+                            {t("sessionManager.refreshTooltip", {
+                              defaultValue: "刷新（终端新消息会自动同步）",
+                            })}
+                          </TooltipContent>
                         </Tooltip>
                       </div>
                     </div>
@@ -987,12 +1662,166 @@ export function SessionManagerPage({ appId }: { appId: string }) {
                           </p>
                         )}
                       </div>
+                    ) : listViewMode === "grouped" ? (
+                      <div className="space-y-2">
+                        {groupedSessions.map((providerGroup) => {
+                          const providerOpen = expandedProviderGroups.has(
+                            providerGroup.providerId,
+                          );
+                          const providerLabel = getProviderLabel(
+                            providerGroup.providerId,
+                            t,
+                          );
+                          const providerSelectionState = getGroupSelectionState(
+                            providerGroup.sessions,
+                          );
+
+                          return (
+                            <Collapsible
+                              key={providerGroup.providerId}
+                              open={providerOpen}
+                              onOpenChange={() =>
+                                toggleProviderGroup(providerGroup.providerId)
+                              }
+                            >
+                              <div className="flex w-full items-center gap-2 rounded-md border bg-muted/40 px-2.5 py-2 transition-colors hover:bg-muted">
+                                {renderProviderGroupCheckbox(
+                                  providerGroup,
+                                  providerLabel,
+                                  providerSelectionState,
+                                )}
+                                <CollapsibleTrigger asChild>
+                                  <button
+                                    type="button"
+                                    className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                                    aria-label={t(
+                                      "sessionManager.toggleProviderGroup",
+                                      {
+                                        defaultValue:
+                                          "展开或折叠 {{provider}} 供应商分组",
+                                        provider: providerLabel,
+                                      },
+                                    )}
+                                  >
+                                    {providerOpen ? (
+                                      <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
+                                    ) : (
+                                      <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />
+                                    )}
+                                    <ProviderIcon
+                                      icon={getProviderIconName(
+                                        providerGroup.providerId,
+                                      )}
+                                      name={providerGroup.providerId}
+                                      size={16}
+                                    />
+                                    <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                                      {providerLabel}
+                                    </span>
+                                    {renderGroupSelectionBadge(
+                                      providerSelectionState,
+                                      providerGroup.sessions.length,
+                                      "secondary",
+                                    )}
+                                  </button>
+                                </CollapsibleTrigger>
+                              </div>
+                              <CollapsibleContent className="mt-1 space-y-1 pl-2">
+                                {providerGroup.directories.map(
+                                  (directoryGroup) => {
+                                    const directoryOpen =
+                                      expandedDirectoryGroups.has(
+                                        directoryGroup.key,
+                                      );
+                                    const directorySelectionState =
+                                      getGroupSelectionState(
+                                        directoryGroup.sessions,
+                                      );
+
+                                    return (
+                                      <Collapsible
+                                        key={directoryGroup.key}
+                                        open={directoryOpen}
+                                        onOpenChange={() =>
+                                          toggleDirectoryGroup(
+                                            directoryGroup.key,
+                                          )
+                                        }
+                                      >
+                                        <div className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+                                          {renderDirectoryGroupCheckbox(
+                                            directoryGroup,
+                                            directorySelectionState,
+                                          )}
+                                          <CollapsibleTrigger asChild>
+                                            <button
+                                              type="button"
+                                              className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                                              aria-label={t(
+                                                "sessionManager.toggleDirectoryGroup",
+                                                {
+                                                  defaultValue:
+                                                    "展开或折叠 {{directory}} 目录分组",
+                                                  directory:
+                                                    directoryGroup.label,
+                                                },
+                                              )}
+                                            >
+                                              {directoryOpen ? (
+                                                <ChevronDown className="size-3.5 shrink-0" />
+                                              ) : (
+                                                <ChevronRight className="size-3.5 shrink-0" />
+                                              )}
+                                              <FolderOpen className="size-3.5 shrink-0" />
+                                              <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                  <span className="min-w-0 flex-1 truncate text-xs font-medium">
+                                                    {directoryGroup.label}
+                                                  </span>
+                                                </TooltipTrigger>
+                                                <TooltipContent
+                                                  side="bottom"
+                                                  className="max-w-xs"
+                                                >
+                                                  <p className="font-mono text-xs break-all">
+                                                    {directoryGroup.projectDir ??
+                                                      t(
+                                                        "sessionManager.unknownDirectory",
+                                                        {
+                                                          defaultValue:
+                                                            "未知目录",
+                                                        },
+                                                      )}
+                                                  </p>
+                                                </TooltipContent>
+                                              </Tooltip>
+                                              {renderGroupSelectionBadge(
+                                                directorySelectionState,
+                                                directoryGroup.sessions.length,
+                                                "outline",
+                                              )}
+                                            </button>
+                                          </CollapsibleTrigger>
+                                        </div>
+                                        <CollapsibleContent className="mt-1 space-y-1 pl-3">
+                                          {directoryGroup.sessions.map(
+                                            (session) =>
+                                              renderSessionItem(session),
+                                          )}
+                                        </CollapsibleContent>
+                                      </Collapsible>
+                                    );
+                                  },
+                                )}
+                              </CollapsibleContent>
+                            </Collapsible>
+                          );
+                        })}
+                      </div>
                     ) : (
                       <div className="space-y-1">
                         {visibleSessions.map((session, index) => {
                           const sessionKey = getSessionKey(session);
-                          const isSelected =
-                            selectedKey !== null && sessionKey === selectedKey;
 
                           return (
                             <div key={sessionKey}>
@@ -1009,24 +1838,7 @@ export function SessionManagerPage({ appId }: { appId: string }) {
                                 index === visiblePinnedCount && (
                                   <div className="mt-2 mb-1 border-t border-border/60" />
                                 )}
-                              <SessionItem
-                                session={session}
-                                isSelected={isSelected}
-                                selectionMode={selectionMode}
-                                searchQuery={search}
-                                isChecked={selectedSessionKeys.has(sessionKey)}
-                                isCheckDisabled={!session.sourcePath}
-                                isPinned={pinnedKeys.has(sessionKey)}
-                                isArchived={archivedKeys.has(sessionKey)}
-                                onSelect={setSelectedKey}
-                                onToggleChecked={(checked) =>
-                                  toggleSessionChecked(session, checked)
-                                }
-                                onTogglePin={() => handleTogglePin(session)}
-                                onToggleArchive={() =>
-                                  handleToggleArchive(session)
-                                }
-                              />
+                              {renderSessionItem(session)}
                             </div>
                           );
                         })}
@@ -1112,6 +1924,38 @@ export function SessionManagerPage({ appId }: { appId: string }) {
                               >
                                 <p className="font-mono text-xs break-all">
                                   {selectedSession.projectDir}
+                                </p>
+                                <p className="text-muted-foreground mt-1">
+                                  {t("sessionManager.clickToCopyPath")}
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                          {selectedSession.sourcePath && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    void handleCopy(
+                                      selectedSession.sourcePath!,
+                                      t("sessionManager.sourcePathCopied"),
+                                    )
+                                  }
+                                  className="flex items-center gap-1 hover:text-foreground transition-colors"
+                                >
+                                  <FileText className="size-3 shrink-0" />
+                                  <span className="font-mono truncate max-w-[200px]">
+                                    {getBaseName(selectedSession.sourcePath)}
+                                  </span>
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent
+                                side="bottom"
+                                className="max-w-xs"
+                              >
+                                <p className="font-mono text-xs break-all">
+                                  {selectedSession.sourcePath}
                                 </p>
                                 <p className="text-muted-foreground mt-1">
                                   {t("sessionManager.clickToCopyPath")}

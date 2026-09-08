@@ -10,7 +10,11 @@ use crate::config::{get_home_dir, write_text_file};
 use crate::hermes_config::MemoryKind;
 use crate::prompt::Prompt;
 use crate::prompt_files::prompt_file_path;
-use crate::services::PromptService;
+use crate::services::pi_prompt_files::{
+    PiPromptFileKind, PiPromptFileService, PiPromptFileSnapshot, PiPromptTemplate,
+    PiPromptTemplateService,
+};
+use crate::services::prompt::PromptService;
 use crate::store::AppState;
 
 #[tauri::command]
@@ -68,6 +72,53 @@ pub async fn get_current_prompt_file_content(app: String) -> Result<Option<Strin
     PromptService::get_current_file_content(app_type).map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+pub async fn get_pi_prompt_file(kind: PiPromptFileKind) -> Result<PiPromptFileSnapshot, String> {
+    PiPromptFileService::read(kind).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub async fn replace_pi_prompt_file(
+    kind: PiPromptFileKind,
+    #[allow(non_snake_case)] expectedRevision: String,
+    content: String,
+) -> Result<PiPromptFileSnapshot, String> {
+    PiPromptFileService::replace(kind, &expectedRevision, &content)
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub async fn delete_pi_prompt_file(
+    kind: PiPromptFileKind,
+    #[allow(non_snake_case)] expectedRevision: String,
+) -> Result<bool, String> {
+    PiPromptFileService::delete(kind, &expectedRevision).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub async fn list_pi_prompt_templates() -> Result<Vec<PiPromptTemplate>, String> {
+    PiPromptTemplateService::list().map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub async fn upsert_pi_prompt_template(
+    slug: String,
+    #[allow(non_snake_case)] originalSlug: Option<String>,
+    #[allow(non_snake_case)] expectedRevision: String,
+    content: String,
+) -> Result<PiPromptTemplate, String> {
+    PiPromptTemplateService::upsert(&slug, originalSlug.as_deref(), &expectedRevision, &content)
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub async fn delete_pi_prompt_template(
+    slug: String,
+    #[allow(non_snake_case)] expectedRevision: String,
+) -> Result<bool, String> {
+    PiPromptTemplateService::delete(&slug, &expectedRevision).map_err(|error| error.to_string())
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MemorySyncTargetInfo {
@@ -108,9 +159,21 @@ fn get_memory_sync_targets() -> Result<Vec<(String, String, PathBuf)>, String> {
     Ok(vec![
         ("codex".to_string(), "Codex CLI".to_string(), codex_path),
         ("gemini".to_string(), "Gemini CLI".to_string(), gemini_path),
-        ("hermes".to_string(), "Hermes Agent".to_string(), hermes_path),
-        ("opencode".to_string(), "OpenCode".to_string(), opencode_path),
-        ("openclaw".to_string(), "OpenClaw".to_string(), openclaw_path),
+        (
+            "hermes".to_string(),
+            "Hermes Agent".to_string(),
+            hermes_path,
+        ),
+        (
+            "opencode".to_string(),
+            "OpenCode".to_string(),
+            opencode_path,
+        ),
+        (
+            "openclaw".to_string(),
+            "OpenClaw".to_string(),
+            openclaw_path,
+        ),
         ("bincode".to_string(), "bincode".to_string(), bincode_path),
     ])
 }
@@ -136,14 +199,16 @@ pub async fn get_memory_sync_overview() -> Result<MemorySyncOverview, String> {
 }
 
 #[tauri::command]
-pub async fn sync_memory_files(targetIds: Vec<String>) -> Result<MemorySyncResult, String> {
+pub async fn sync_memory_files(
+    #[allow(non_snake_case)] targetIds: Vec<String>,
+) -> Result<MemorySyncResult, String> {
     let source_path = prompt_file_path(&AppType::Claude).map_err(|e| e.to_string())?;
     if !source_path.exists() {
         return Err("未找到 ~/.claude/CLAUDE.md，请先创建".to_string());
     }
 
-    let content = std::fs::read_to_string(&source_path)
-        .map_err(|e| format!("读取源记忆文件失败: {e}"))?;
+    let content =
+        std::fs::read_to_string(&source_path).map_err(|e| format!("读取源记忆文件失败: {e}"))?;
     if content.trim().is_empty() {
         return Err("CLAUDE.md 为空，暂时没有可同步内容".to_string());
     }

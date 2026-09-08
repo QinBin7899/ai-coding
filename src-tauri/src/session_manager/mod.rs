@@ -1,10 +1,61 @@
 pub mod providers;
+pub mod search;
 pub mod terminal;
+pub mod watcher;
 
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
-use providers::{claude, codex, gemini, hermes, openclaw, opencode};
+use providers::{claude, codex, gemini, grokbuild, hermes, openclaw, opencode, pi};
+
+/// 会话源文件的轻量状态：前端用它做「变了才重载」的兜底轮询。
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionFileStat {
+    pub mtime_ms: i64,
+    pub size: u64,
+}
+
+/// 读取会话源文件的 mtime / size。SQLite 来源或文件不存在时返回 `Ok(None)`；
+/// 路径不在对应 provider 的会话根目录内时拒绝（与删除逻辑同一套校验）。
+pub fn session_file_stat(
+    provider_id: &str,
+    source_path: &str,
+) -> Result<Option<SessionFileStat>, String> {
+    if source_path.starts_with("sqlite:") {
+        return Ok(None);
+    }
+    let path = Path::new(source_path);
+    if !path.exists() {
+        return Ok(None);
+    }
+
+    let roots = provider_roots(provider_id)?;
+    let validated = canonicalize_existing_path(path, "session source")?;
+    let inside = roots.iter().filter(|root| root.exists()).any(|root| {
+        canonicalize_existing_path(root, "session root")
+            .map(|validated_root| validated.starts_with(&validated_root))
+            .unwrap_or(false)
+    });
+    if !inside {
+        return Err(format!(
+            "Session source path is outside provider roots: {}",
+            path.display()
+        ));
+    }
+
+    let meta = std::fs::metadata(&validated).map_err(|e| e.to_string())?;
+    let mtime_ms = meta
+        .modified()
+        .ok()
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0);
+    Ok(Some(SessionFileStat {
+        mtime_ms,
+        size: meta.len(),
+    }))
+}
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -56,13 +107,15 @@ pub struct DeleteSessionOutcome {
 }
 
 pub fn scan_sessions() -> Vec<SessionMeta> {
-    let (r1, r2, r3, r4, r5, r6) = std::thread::scope(|s| {
+    let (r1, r2, r3, r4, r5, r6, r7, r8) = std::thread::scope(|s| {
         let h1 = s.spawn(codex::scan_sessions);
         let h2 = s.spawn(claude::scan_sessions);
         let h3 = s.spawn(opencode::scan_sessions);
         let h4 = s.spawn(openclaw::scan_sessions);
         let h5 = s.spawn(gemini::scan_sessions);
         let h6 = s.spawn(hermes::scan_sessions);
+        let h7 = s.spawn(grokbuild::scan_sessions);
+        let h8 = s.spawn(pi::scan_sessions);
         (
             h1.join().unwrap_or_default(),
             h2.join().unwrap_or_default(),
@@ -70,6 +123,8 @@ pub fn scan_sessions() -> Vec<SessionMeta> {
             h4.join().unwrap_or_default(),
             h5.join().unwrap_or_default(),
             h6.join().unwrap_or_default(),
+            h7.join().unwrap_or_default(),
+            h8.join().unwrap_or_default(),
         )
     });
 
@@ -80,6 +135,8 @@ pub fn scan_sessions() -> Vec<SessionMeta> {
     sessions.extend(r4);
     sessions.extend(r5);
     sessions.extend(r6);
+    sessions.extend(r7);
+    sessions.extend(r8);
 
     sessions.sort_by(|a, b| {
         let a_ts = a.last_active_at.or(a.created_at).unwrap_or(0);
@@ -106,7 +163,9 @@ pub fn load_messages(provider_id: &str, source_path: &str) -> Result<Vec<Session
         "opencode" => opencode::load_messages(path),
         "openclaw" => openclaw::load_messages(path),
         "gemini" => gemini::load_messages(path),
+        "grokbuild" => grokbuild::load_messages(path),
         "hermes" => hermes::load_messages(path),
+        "pi" => pi::load_messages(path),
         _ => Err(format!("Unsupported provider: {provider_id}")),
     }
 }
@@ -125,7 +184,12 @@ pub fn delete_session(
     }
 
     let roots = provider_roots(provider_id)?;
-    delete_session_with_roots(provider_id, session_id, Path::new(source_path), &roots)
+    let deleted =
+        delete_session_with_roots(provider_id, session_id, Path::new(source_path), &roots)?;
+    if deleted {
+        search::evict(source_path);
+    }
+    Ok(deleted)
 }
 
 pub fn delete_sessions(requests: &[DeleteSessionRequest]) -> Vec<DeleteSessionOutcome> {
@@ -165,7 +229,11 @@ fn delete_session_with_roots(
                     openclaw::delete_session(&validated_root, &validated_source, session_id)
                 }
                 "gemini" => gemini::delete_session(&validated_root, &validated_source, session_id),
+                "grokbuild" => {
+                    grokbuild::delete_session(&validated_root, &validated_source, session_id)
+                }
                 "hermes" => hermes::delete_session(&validated_root, &validated_source, session_id),
+                "pi" => pi::delete_session(&validated_root, &validated_source, session_id),
                 _ => Err(format!("Unsupported provider: {provider_id}")),
             };
         }
@@ -187,14 +255,16 @@ fn delete_session_with_roots(
     ))
 }
 
-fn provider_roots(provider_id: &str) -> Result<Vec<PathBuf>, String> {
+pub(crate) fn provider_roots(provider_id: &str) -> Result<Vec<PathBuf>, String> {
     let roots = match provider_id {
         "codex" => codex::session_roots(),
         "claude" => vec![crate::config::get_claude_config_dir().join("projects")],
         "opencode" => vec![opencode::get_opencode_data_dir()],
         "openclaw" => vec![crate::openclaw_config::get_openclaw_dir().join("agents")],
         "gemini" => vec![crate::gemini_config::get_gemini_dir().join("tmp")],
+        "grokbuild" => grokbuild::session_roots(),
         "hermes" => vec![crate::hermes_config::get_hermes_dir().join("sessions")],
+        "pi" => pi::session_roots(),
         _ => return Err(format!("Unsupported provider: {provider_id}")),
     };
 

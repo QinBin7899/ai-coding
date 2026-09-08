@@ -32,6 +32,8 @@ interface SessionItemProps {
   isChecked: boolean;
   isCheckDisabled?: boolean;
   searchQuery?: string;
+  /** 正文检索命中的上下文片段（仅搜索时存在） */
+  matchSnippet?: string;
   isPinned: boolean;
   isArchived: boolean;
   onSelect: (key: string) => void;
@@ -47,6 +49,7 @@ export function SessionItem({
   isChecked,
   isCheckDisabled = false,
   searchQuery,
+  matchSnippet,
   isPinned,
   isArchived,
   onSelect,
@@ -122,6 +125,16 @@ export function SessionItem({
               : t("common.unknown")}
           </span>
         </div>
+        {matchSnippet && searchQuery && (
+          <div
+            className="mt-1 text-[11px] leading-snug text-muted-foreground/90 line-clamp-2 break-all"
+            title={t("sessionManager.contentMatch", {
+              defaultValue: "聊天内容命中",
+            })}
+          >
+            {highlightText(matchSnippet, searchQuery)}
+          </div>
+        )}
       </button>
 
       {!selectionMode && (

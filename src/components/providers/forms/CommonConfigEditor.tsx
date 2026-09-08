@@ -172,7 +172,7 @@ export function CommonConfigEditor({
               />
               <span>
                 {t("claudeConfig.writeCommonConfig", {
-                  defaultValue: "写入通用配置",
+                  defaultValue: "应用通用配置",
                 })}
               </span>
             </label>
@@ -250,6 +250,7 @@ export function CommonConfigEditor({
         <JsonEditor
           value={localValue}
           onChange={handleLocalChange}
+          ariaLabel={t("provider.configJson")}
           placeholder={`{
   "env": {
     "ANTHROPIC_BASE_URL": "https://your-api-endpoint.com",
@@ -257,7 +258,7 @@ export function CommonConfigEditor({
   }
 }`}
           darkMode={isDarkMode}
-          rows={14}
+          rows={3}
           showValidation={true}
           language="json"
         />
@@ -331,6 +332,7 @@ export function CommonConfigEditor({
           <JsonEditor
             value={commonConfigSnippet}
             onChange={onCommonConfigSnippetChange}
+            ariaLabel={t("claudeConfig.editCommonConfigTitle")}
             placeholder={`{
   "env": {
     "ANTHROPIC_BASE_URL": "https://your-api-endpoint.com"

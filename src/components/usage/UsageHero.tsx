@@ -23,7 +23,7 @@ import {
   parseFiniteNumber,
 } from "./format";
 import {
-  CACHE_INCLUSIVE_APP_TYPES,
+  getCacheWriteAvailability,
   type AppType,
   type UsageRangeSelection,
   type UsageSummary,
@@ -33,6 +33,8 @@ import {
 interface UsageHeroProps {
   range: UsageRangeSelection;
   appType?: string;
+  providerName?: string;
+  model?: string;
   refreshIntervalMs: number;
 }
 
@@ -49,11 +51,6 @@ const TITLE_THEMES: Record<AppType | "all", TitleTheme> = {
     accent: "text-amber-600 dark:text-amber-400",
     iconBg: "bg-amber-500/10",
   },
-  "claude-desktop": {
-    // 与 Claude Code 同属 Anthropic 品牌，用更深的 orange 区分
-    accent: "text-orange-600 dark:text-orange-400",
-    iconBg: "bg-orange-500/10",
-  },
   codex: {
     // OpenAI/Codex 走黑白单色调；中性灰在深浅模式都能透出方块底色，
     // 不像纯黑 bg-black/10 在深色背景下会糊掉。
@@ -64,9 +61,17 @@ const TITLE_THEMES: Record<AppType | "all", TitleTheme> = {
     accent: "text-sky-600 dark:text-sky-400",
     iconBg: "bg-sky-500/10",
   },
+  grokbuild: {
+    accent: "text-rose-600 dark:text-rose-400",
+    iconBg: "bg-rose-500/10",
+  },
   opencode: {
     accent: "text-purple-600 dark:text-purple-400",
     iconBg: "bg-purple-500/10",
+  },
+  pi: {
+    accent: "text-fuchsia-600 dark:text-fuchsia-400",
+    iconBg: "bg-fuchsia-500/10",
   },
 };
 
@@ -122,24 +127,6 @@ function pickSummary(
   return aggregateSummaries(apps.map((a) => a.summary));
 }
 
-type CacheWriteState = "ok" | "partial" | "na";
-
-/**
- * Anthropic-style protocols report cache creation; OpenAI-style protocols
- * (Codex/Gemini) do not — so a mix shows the number with a caveat, all-OpenAI
- * shows N/A. `appTypes` is the set actually contributing to the displayed
- * summary (a single app, or every app that participated in "all").
- */
-function deriveCacheWriteState(appTypes: string[]): CacheWriteState {
-  if (appTypes.length === 0) return "ok";
-  const inclusive = appTypes.filter((t) =>
-    CACHE_INCLUSIVE_APP_TYPES.has(t),
-  ).length;
-  if (inclusive === appTypes.length) return "na";
-  if (inclusive === 0) return "ok";
-  return "partial";
-}
-
 /**
  * Hero 标题图标：选中具体应用时显示该应用的品牌图标，"全部"时回退到通用闪电。
  * 复用 APP_ICON_MAP（与侧边栏 / 应用切换器同一套图标），用 cloneElement 放大到
@@ -164,14 +151,20 @@ function AppGlyph({
 export function UsageHero({
   range,
   appType,
+  providerName,
+  model,
   refreshIntervalMs,
 }: UsageHeroProps) {
   const { t, i18n } = useTranslation();
   const lang = getResolvedLang(i18n);
 
-  const { data, isLoading } = useUsageSummaryByApp(range, {
-    refetchInterval: refreshIntervalMs > 0 ? refreshIntervalMs : false,
-  });
+  const { data, isLoading } = useUsageSummaryByApp(
+    range,
+    { providerName, model },
+    {
+      refetchInterval: refreshIntervalMs > 0 ? refreshIntervalMs : false,
+    },
+  );
 
   // No client-side filtering: Hero's totals must match the Trend/Logs/Stats
   // below, which all go through the backend's full set of app_types. The
@@ -186,7 +179,7 @@ export function UsageHero({
   const appLabel =
     appType && appType in TITLE_THEMES ? t(`usage.appFilter.${appType}`) : null;
 
-  const cacheWriteState = deriveCacheWriteState(
+  const cacheWriteState = getCacheWriteAvailability(
     appType ? [appType] : allApps.map((a) => a.appType),
   );
 

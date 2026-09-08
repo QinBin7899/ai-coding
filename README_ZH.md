@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>一个为 AI 编程工具而生的模型供应商切换中枢。</strong><br />
-  统一管理 Claude Code、Claude Desktop、Codex、Gemini CLI、OpenCode、OpenClaw、Hermes、bincode，让国产模型和海外模型都能顺手切换。
+  统一管理 Claude Code、Claude Desktop、Codex、Gemini CLI、OpenCode、OpenClaw、Hermes、Grok Build、Pi、bincode，让国产模型和海外模型都能顺手切换。
 </p>
 
 AI Coding 不是普通聊天壳，而是给 AI 编程用户准备的桌面控制台：把供应商、模型、API Key、代理路由、MCP、Skills、提示词、会话记录、记忆同步和用量统计放到一个地方管理。它适合经常在国产模型和国外模型之间切换，也适合同时使用多个 AI 编程工具的开发者。
@@ -28,7 +28,7 @@ AI Coding 不是普通聊天壳，而是给 AI 编程用户准备的桌面控制
 ## 核心亮点
 
 - **国产模型 / 海外模型自由切换**：添加供应商时按“国模 / 自定义配置 / 美模（海外模型）”分区，内置 DeepSeek、Kimi、智谱 GLM、千帆、百炼、SiliconFlow、ModelScope、Claude、Gemini、OpenAI 兼容服务、AWS Bedrock 等常见选择。
-- **同时管理 8 个 AI 编程 App**：支持 Claude Code、Claude Desktop、Codex、Gemini CLI、OpenCode、OpenClaw、Hermes 和 bincode；其中 bincode 按 OpenCode 兼容方式接入，可独立显示和切换。
+- **同时管理 10 个 AI 编程 App**：支持 Claude Code、Claude Desktop、Codex、Gemini CLI、OpenCode、OpenClaw、Hermes、Grok Build、Pi 和 bincode；其中 bincode 按 OpenCode 兼容方式接入，可独立显示和切换。
 - **跨工具记忆同步**：一键把 Claude Code 的 `CLAUDE.md` 记忆同步到 Codex、Gemini、Hermes、OpenCode、OpenClaw 等工具，不用每个工具手动复制一遍。
 - **会话管理与 Markdown 导出**：集中查看本地 AI 编程会话，支持搜索、恢复会话命令、删除会话，并可把当前会话一键导出为 `.md` 文件，方便归档、复盘和发给别人。
 - **Apple 风格深色界面**：默认深色模式，暖橙主色，底部 macOS Dock 风格导航，图标支持悬停动态放大和名称提示，整体更接近桌面 App 的使用体验。
@@ -50,6 +50,8 @@ AI Coding 不是普通聊天壳，而是给 AI 编程用户准备的桌面控制
 | OpenCode | OpenCode 协议与配置 |
 | OpenClaw | OpenClaw 配置、工具与默认 Agents |
 | Hermes | Hermes Agent 记忆与 Skills |
+| Grok Build | xAI Grok Build 配置与官方登录（默认隐藏，可在设置中开启） |
+| Pi | Pi 编程助手供应商、提示词与用量（默认隐藏，可在设置中开启） |
 | bincode | 基于 OpenCode 兼容协议接入的独立应用入口 |
 
 ## 适合谁用
@@ -73,7 +75,7 @@ AI Coding 不是普通聊天壳，而是给 AI 编程用户准备的桌面控制
 
 ### macOS（Apple Silicon）
 
-[下载 AI Coding v3.17.1 macOS 安装包](downloads/AI-Coding-v3.17.1-macOS-aarch64.dmg)
+[下载 AI Coding v3.22.0 macOS 安装包](downloads/AI-Coding-v3.22.0-macOS-aarch64.dmg)
 
 打开 `.dmg` 文件，把 **AI Coding** 拖进「应用程序」文件夹即可。
 

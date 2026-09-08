@@ -1,5 +1,12 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { SessionMessage, SessionMeta } from "@/types";
+import type {
+  SessionFileStat,
+  SessionMessage,
+  SessionMeta,
+  SessionRef,
+  SessionSearchHit,
+  SessionSearchMode,
+} from "@/types";
 
 export interface DeleteSessionOptions {
   providerId: string;
@@ -27,6 +34,34 @@ export const sessionsApi = {
     sourcePath: string,
   ): Promise<SessionMessage[]> {
     return await invoke("get_session_messages", { providerId, sourcePath });
+  },
+
+  /** 会话源文件的 mtime / size；SQLite 来源或文件不存在时为 null */
+  async getFileStat(
+    providerId: string,
+    sourcePath: string,
+  ): Promise<SessionFileStat | null> {
+    const result = await invoke<SessionFileStat | null>(
+      "get_session_file_stat",
+      { providerId, sourcePath },
+    );
+    return result ?? null;
+  },
+
+  /** 在给定会话集合中检索聊天正文，支持精准与模糊匹配 */
+  async searchContents(
+    items: SessionRef[],
+    query: string,
+    mode: SessionSearchMode,
+    limit = 200,
+  ): Promise<SessionSearchHit[]> {
+    const result = await invoke<SessionSearchHit[]>("search_session_contents", {
+      items,
+      query,
+      mode,
+      limit,
+    });
+    return result ?? [];
   },
 
   async delete(options: DeleteSessionOptions): Promise<boolean> {

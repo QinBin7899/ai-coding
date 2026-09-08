@@ -6,6 +6,7 @@ import { useUsageQuery } from "@/lib/query/queries";
 import { UsageData, Provider } from "@/types";
 import { TierBadge } from "@/components/SubscriptionQuotaFooter";
 import type { QuotaTier } from "@/types/subscription";
+import { isAdditiveAppId } from "@/config/appConfig";
 
 interface UsageFooterProps {
   provider: Provider;
@@ -56,8 +57,8 @@ const UsageFooter: React.FC<UsageFooterProps> = ({
     provider.meta?.usage_script?.templateType === "token_plan";
 
   // 统一的用量查询（自动查询仅对当前激活的供应商启用）
-  // OpenCode（累加模式）：使用 isInConfig 代替 isCurrent
-  const shouldAutoQuery = appId === "opencode" ? isInConfig : isCurrent;
+  // 累加模式：使用 isInConfig 代替 isCurrent
+  const shouldAutoQuery = isAdditiveAppId(appId) ? isInConfig : isCurrent;
   const autoQueryInterval = shouldAutoQuery
     ? provider.meta?.usage_script?.autoQueryInterval || 0
     : 0;
@@ -65,6 +66,7 @@ const UsageFooter: React.FC<UsageFooterProps> = ({
   const {
     data: usage,
     isFetching: loading,
+    isError,
     lastQueriedAt,
     refetch,
   } = useUsageQuery(providerId, appId, {
@@ -86,11 +88,13 @@ const UsageFooter: React.FC<UsageFooterProps> = ({
     return () => clearInterval(interval);
   }, [lastQueriedAt]);
 
-  // 只在启用用量查询且有数据时显示
-  if (!usageEnabled || !usage) return null;
+  // 只在启用用量查询且有数据时显示。后端把瞬时传输失败转成了 reject：有缓存
+  // 成功值时 react-query 保留 data 照常展示；首次查询就失败则 data 为空——
+  // 此时（isError）仍要渲染失败态给出重试入口，否则 footer 整体消失、无从重查。
+  if (!usageEnabled || (!usage && !isError)) return null;
 
-  // 错误状态
-  if (!usage.success) {
+  // 错误状态（业务失败，或无缓存成功值的 reject）
+  if (!usage || !usage.success) {
     if (inline) {
       return (
         <div className="inline-flex items-center gap-2 text-xs rounded-lg border border-border-default bg-card px-3 py-2 shadow-sm">
@@ -115,7 +119,7 @@ const UsageFooter: React.FC<UsageFooterProps> = ({
         <div className="flex items-center justify-between gap-2 text-xs">
           <div className="flex items-center gap-2 text-red-500 dark:text-red-400">
             <AlertCircle size={14} />
-            <span>{usage.error || t("usage.queryFailed")}</span>
+            <span>{usage?.error || t("usage.queryFailed")}</span>
           </div>
 
           {/* 刷新按钮 */}

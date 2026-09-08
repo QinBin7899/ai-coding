@@ -15,12 +15,12 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { ToggleRow } from "@/components/ui/toggle-row";
-import { useProxyStatus } from "@/hooks/useProxyStatus";
 import { toast } from "sonner";
 import { useFailoverQueue } from "@/lib/query/failover";
 import { ProviderHealthBadge } from "@/components/providers/ProviderHealthBadge";
 import { useProviderHealth } from "@/lib/query/failover";
 import {
+  useProxyStatusQuery,
   useProxyTakeoverStatus,
   useSetProxyTakeoverForApp,
   useGlobalProxyConfig,
@@ -30,6 +30,11 @@ import type { ProxyStatus } from "@/types/proxy";
 import { useTranslation } from "react-i18next";
 import { AnimatePresence, motion } from "framer-motion";
 import { extractErrorMessage } from "@/utils/errorUtils";
+import {
+  getAppLabel,
+  PROXY_APP_IDS,
+  type ProxyAppId,
+} from "@/config/appConfig";
 
 interface ProxyPanelProps {
   enableLocalProxy: boolean;
@@ -45,7 +50,8 @@ export function ProxyPanel({
   isProxyPending,
 }: ProxyPanelProps) {
   const { t } = useTranslation();
-  const { status, isRunning } = useProxyStatus();
+  const { data: status } = useProxyStatusQuery();
+  const isRunning = status?.running ?? false;
 
   // 获取应用接管状态
   const { data: takeoverStatus } = useProxyTakeoverStatus();
@@ -72,6 +78,7 @@ export function ProxyPanel({
   const { data: claudeQueue = [] } = useFailoverQueue("claude");
   const { data: codexQueue = [] } = useFailoverQueue("codex");
   const { data: geminiQueue = [] } = useFailoverQueue("gemini");
+  const { data: grokQueue = [] } = useFailoverQueue("grokbuild");
 
   const handleTakeoverChange = async (appType: string, enabled: boolean) => {
     try {
@@ -272,19 +279,16 @@ export function ProxyPanel({
                     defaultValue: "应用接管",
                   })}
                 </p>
-                <div className="grid gap-2 sm:grid-cols-3">
-                  {(["claude", "codex", "gemini"] as const).map((appType) => {
-                    const isEnabled =
-                      takeoverStatus?.[
-                        appType as keyof typeof takeoverStatus
-                      ] ?? false;
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                  {PROXY_APP_IDS.map((appType) => {
+                    const isEnabled = takeoverStatus?.[appType] ?? false;
                     return (
                       <div
                         key={appType}
                         className="flex items-center justify-between rounded-md border border-primary/20 bg-background/60 px-3 py-2"
                       >
-                        <span className="text-sm font-medium capitalize">
-                          {appType}
+                        <span className="text-sm font-medium">
+                          {getAppLabel(appType)}
                         </span>
                         <Switch
                           checked={isEnabled}
@@ -415,7 +419,8 @@ export function ProxyPanel({
               {/* [6] Provider queues */}
               {(claudeQueue.length > 0 ||
                 codexQueue.length > 0 ||
-                geminiQueue.length > 0) && (
+                geminiQueue.length > 0 ||
+                grokQueue.length > 0) && (
                 <div className="pt-3 border-t border-border space-y-3">
                   <div className="flex items-center gap-2">
                     <ListOrdered className="h-3.5 w-3.5 text-muted-foreground" />
@@ -453,6 +458,18 @@ export function ProxyPanel({
                       appType="gemini"
                       appLabel="Gemini"
                       targets={geminiQueue.map((item) => ({
+                        id: item.providerId,
+                        name: item.providerName,
+                      }))}
+                      status={status}
+                    />
+                  )}
+
+                  {grokQueue.length > 0 && (
+                    <ProviderQueueGroup
+                      appType="grokbuild"
+                      appLabel="Grok Build"
+                      targets={grokQueue.map((item) => ({
                         id: item.providerId,
                         name: item.providerName,
                       }))}
@@ -637,7 +654,7 @@ function StatCard({ icon, label, value, variant = "default" }: StatCardProps) {
 }
 
 interface ProviderQueueGroupProps {
-  appType: string;
+  appType: ProxyAppId;
   appLabel: string;
   targets: Array<{
     id: string;
@@ -689,7 +706,7 @@ interface ProviderQueueItemProps {
     name: string;
   };
   priority: number;
-  appType: string;
+  appType: ProxyAppId;
   isCurrent: boolean;
 }
 

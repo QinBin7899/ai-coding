@@ -31,10 +31,12 @@ const ALL_APPS: DockAppId[] = [
   "claude-desktop",
   "codex",
   "gemini",
+  "grokbuild",
   "opencode",
   "bincode",
   "openclaw",
   "hermes",
+  "pi",
 ];
 const STORAGE_KEY = "ai-coding-last-app";
 
@@ -57,20 +59,24 @@ export function AppSwitcher({
     "claude-desktop": "claude",
     codex: "openai",
     gemini: "gemini",
+    grokbuild: "grok",
     opencode: "opencode",
     bincode: "bincode",
     openclaw: "openclaw",
     hermes: "hermes",
+    pi: "pi",
   };
   const appDisplayName: Record<DockAppId, string> = {
     claude: "Claude Code",
     "claude-desktop": "Claude Desktop",
     codex: "Codex",
     gemini: "Gemini",
+    grokbuild: "Grok Build",
     opencode: "OpenCode",
     bincode: "bincode",
     openclaw: "OpenClaw",
     hermes: "Hermes",
+    pi: "Pi",
   };
 
   const appsToShow = ALL_APPS.filter((app) => {
@@ -152,7 +158,9 @@ export function AppSwitcher({
                           strokeWidth={2.5}
                           style={
                             badgeConfig?.offsetY
-                              ? { transform: `translateY(${badgeConfig.offsetY}px)` }
+                              ? {
+                                  transform: `translateY(${badgeConfig.offsetY}px)`,
+                                }
                               : undefined
                           }
                         />

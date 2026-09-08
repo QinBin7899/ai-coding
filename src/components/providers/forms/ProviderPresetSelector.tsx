@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { FormLabel } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ import type { ClaudeDesktopProviderPreset } from "@/config/claudeDesktopProvider
 import type { OpenCodeProviderPreset } from "@/config/opencodeProviderPresets";
 import type { OpenClawProviderPreset } from "@/config/openclawProviderPresets";
 import type { HermesProviderPreset } from "@/config/hermesProviderPresets";
+import type { PiProviderPreset } from "@/config/piProviderPresets";
 import type { ProviderCategory } from "@/types";
 import {
   universalProviderPresets,
@@ -47,7 +48,8 @@ export type AnyPreset =
   | ClaudeDesktopProviderPreset
   | OpenCodeProviderPreset
   | OpenClawProviderPreset
-  | HermesProviderPreset;
+  | HermesProviderPreset
+  | PiProviderPreset;
 
 export type PresetEntry = {
   id: string;
@@ -63,19 +65,9 @@ export function getPresetDisplayName(
 
 export function getPresetSearchText(
   entry: PresetEntry,
-  presetCategoryLabels: Record<string, string>,
   t: PresetTranslator,
 ): string {
-  const presetCategory = entry.preset.category ?? "others";
-  const categoryLabel =
-    presetCategoryLabels[presetCategory] ?? String(t("providerPreset.other"));
-
-  return [
-    getPresetDisplayName(entry.preset, t),
-    entry.preset.name,
-    entry.preset.websiteUrl,
-    categoryLabel,
-  ]
+  return [getPresetDisplayName(entry.preset, t), entry.preset.name]
     .join(" ")
     .toLowerCase();
 }
@@ -83,7 +75,6 @@ export function getPresetSearchText(
 export function filterPresetEntries(
   entries: PresetEntry[],
   query: string,
-  presetCategoryLabels: Record<string, string>,
   t: PresetTranslator,
 ): PresetEntry[] {
   const normalizedQuery = query.trim().toLowerCase();
@@ -92,9 +83,7 @@ export function filterPresetEntries(
   }
 
   return entries.filter((entry) =>
-    getPresetSearchText(entry, presetCategoryLabels, t).includes(
-      normalizedQuery,
-    ),
+    getPresetSearchText(entry, t).includes(normalizedQuery),
   );
 }
 
@@ -117,7 +106,6 @@ export function sortPresetEntries(
 export interface PresetVisibilityOptions {
   query: string;
   sortMode: PresetSortMode;
-  presetCategoryLabels: Record<string, string>;
   t: PresetTranslator;
 }
 
@@ -125,13 +113,9 @@ export function getVisiblePresetEntries(
   entries: PresetEntry[],
   options: PresetVisibilityOptions,
 ): PresetEntry[] {
-  const { query, sortMode, presetCategoryLabels, t } = options;
+  const { query, sortMode, t } = options;
 
-  return sortPresetEntries(
-    filterPresetEntries(entries, query, presetCategoryLabels, t),
-    sortMode,
-    t,
-  );
+  return sortPresetEntries(filterPresetEntries(entries, query, t), sortMode, t);
 }
 
 interface ProviderPresetSelectorProps {
@@ -142,6 +126,7 @@ interface ProviderPresetSelectorProps {
   onUniversalPresetSelect?: (preset: UniversalProviderPreset) => void;
   onManageUniversalProviders?: () => void;
   category?: ProviderCategory; // 当前选中的分类
+  categoryHint?: ReactNode;
 }
 
 type PresetRegionGroup = "domestic" | "custom" | "overseas";
@@ -154,23 +139,40 @@ export function ProviderPresetSelector({
   onUniversalPresetSelect,
   onManageUniversalProviders,
   category,
-}: ProviderPresetSelectorProps) {
+  categoryHint,
+}: Readonly<ProviderPresetSelectorProps>) {
   const { t } = useTranslation();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortMode, setSortMode] = useState<PresetSortMode>(
     PresetSortMode.Original,
   );
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // 键盘快捷键: Ctrl/Cmd+F 打开搜索并聚焦输入框。
+  // 使用捕获阶段并阻止冒泡，避免背后 ProviderList 的同名快捷键被意外触发。
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "f") {
+        event.preventDefault();
+        event.stopPropagation();
+        setSearchOpen(true);
+        requestAnimationFrame(() => searchInputRef.current?.focus());
+      }
+    };
+
+    globalThis.addEventListener("keydown", handleKeyDown, true);
+    return () => globalThis.removeEventListener("keydown", handleKeyDown, true);
+  }, []);
 
   const visiblePresetEntries = useMemo(
     () =>
       getVisiblePresetEntries(presetEntries, {
         query: searchQuery,
         sortMode,
-        presetCategoryLabels,
         t,
       }),
-    [presetEntries, presetCategoryLabels, searchQuery, sortMode, t],
+    [presetEntries, searchQuery, sortMode, t],
   );
 
   const getRegionGroup = (entry: PresetEntry): PresetRegionGroup => {
@@ -204,6 +206,7 @@ export function ProviderPresetSelector({
   }, [visiblePresetEntries]);
 
   const getCategoryHint = (): ReactNode => {
+    if (categoryHint !== undefined) return categoryHint;
     switch (category) {
       case "official":
         return t("providerForm.officialHint", {
@@ -246,6 +249,18 @@ export function ProviderPresetSelector({
   };
 
   const renderPresetIcon = (preset: AnyPreset) => {
+    if (preset.icon) {
+      return (
+        <ProviderIcon
+          icon={preset.icon}
+          name={preset.name}
+          color={preset.iconColor}
+          size={14}
+          className="flex-shrink-0"
+        />
+      );
+    }
+
     const iconType = preset.theme?.icon;
     if (!iconType) return null;
 
@@ -324,7 +339,9 @@ export function ProviderPresetSelector({
       return selectedPresetId === "custom" || category === "custom";
     }
 
-    const selectedEntry = presetEntries.find((entry) => entry.id === selectedPresetId);
+    const selectedEntry = presetEntries.find(
+      (entry) => entry.id === selectedPresetId,
+    );
     return selectedEntry ? getRegionGroup(selectedEntry) === groupKey : false;
   };
 
@@ -366,8 +383,15 @@ export function ProviderPresetSelector({
                 className="w-72 p-2 border-border-default"
               >
                 <Input
+                  ref={searchInputRef}
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      setSearchQuery("");
+                      setSearchOpen(false);
+                    }
+                  }}
                   placeholder={t("providerPreset.searchPlaceholder", {
                     defaultValue: "Search presets...",
                   })}
@@ -483,7 +507,7 @@ export function ProviderPresetSelector({
                         }
                       >
                         {renderPresetIcon(entry.preset)}
-                        {getPresetDisplayName(entry.preset, t)}
+                        <span>{getPresetDisplayName(entry.preset, t)}</span>
                       </button>
                     );
                   })}
