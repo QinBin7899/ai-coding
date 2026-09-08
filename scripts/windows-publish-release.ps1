@@ -51,11 +51,16 @@ $mainCommit = Invoke-RestMethod "$apiBase/commits/main" -Headers $headers
 if ($mainCommit.sha -ne $env:GITHUB_SHA) {
     throw 'Main has advanced since this build started. Only the current main commit may publish a new release.'
 }
-$existingCommit = Invoke-RestMethod "$apiBase/commits/$tag" -Headers $headers -SkipHttpErrorCheck -StatusCodeVariable commitStatus
-if ($commitStatus -eq 200 -and $existingCommit.sha -ne $env:GITHUB_SHA) {
-    throw "Tag $tag already refers to a different commit. Bump the package version instead of replacing a published release."
+$existingRef = Invoke-RestMethod "$apiBase/git/ref/tags/$tag" -Headers $headers -SkipHttpErrorCheck -StatusCodeVariable tagStatus
+# The commits endpoint returns 422 for an unknown commitish. Exact tag-ref
+# lookup has an unambiguous 404, then commits resolves existing annotated tags.
+if ($tagStatus -eq 200) {
+    $existingCommit = Invoke-RestMethod "$apiBase/commits/$tag" -Headers $headers
+    if ($existingCommit.sha -ne $env:GITHUB_SHA) {
+        throw "Tag $tag already refers to a different commit. Bump the package version instead of replacing a published release."
+    }
 }
-if ($commitStatus -notin @(200, 404)) { throw "Could not verify existing release tag (HTTP $commitStatus)." }
+if ($tagStatus -notin @(200, 404)) { throw "Could not verify existing release tag (HTTP $tagStatus)." }
 $existingRelease = Invoke-RestMethod "$apiBase/releases/tags/$tag" -Headers $headers -SkipHttpErrorCheck -StatusCodeVariable releaseStatus
 if ($releaseStatus -notin @(200, 404)) { throw "Could not inspect release (HTTP $releaseStatus)." }
 
